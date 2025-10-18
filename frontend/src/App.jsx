@@ -40,24 +40,99 @@ export default function App(){
   return <AdminView state={state} />
 }
 
-// ---- CSV utils ----
+// ---- CSV utils (robust, headerless or headered; , ; or \t) ----
 function parseCSV(text){
-  // very small CSV parser (no quoted commas). Assumes headers in first row.
-  const lines = text.split(/\r?\n/).filter(Boolean)
+  if (!text) return []
+
+  // Normalize line endings + strip BOM
+  let s = String(text).replace(/\r\n/g, '\n').replace(/\r/g, '\n')
+  if (s.charCodeAt(0) === 0xFEFF) s = s.slice(1) // remove BOM
+
+  const lines = s.split('\n').filter(Boolean)
+
   if (!lines.length) return []
-  const headers = lines[0].split(',').map(h => h.trim().toLowerCase())
-  return lines.slice(1).map(line => {
-    const cells = line.split(',').map(c => c.trim())
-    const row = {}
-    headers.forEach((h, i) => row[h] = cells[i] ?? '')
-    // normalize common header names
-    return {
-      number: row['number'] || row['nr'] || row['delegatenummer'] || row['delegate number'] || row['delegatenr'] || row['id'] || '',
-      name: row['name'] || row['navn'] || '',
-      org: row['org'] || row['organisasjon'] || row['kommune'] || row['representerer'] || row['org.'] || ''
+
+  // Detect delimiter using the first non-empty line
+  const sample = lines[0]
+  const delim = detectDelimiter(sample)
+  // Quick & safe splitter (no full RFC quoting, but handles simple quotes)
+  const split = (line) => splitRow(line, delim)
+
+  // Decide if file has a header row
+  // Heuristic: if first row contains any letters (e.g., "name","org"), treat as header.
+  // Your file is numbers+names only -> no header.
+  const hasHeader = /[A-Za-z]/.test(sample.split(delim)[0]) && /[A-Za-z]/.test(sample)
+
+  let rows = []
+  if (hasHeader) {
+    const headers = split(lines[0]).map(h => h.trim().toLowerCase())
+    for (let i = 1; i < lines.length; i++) {
+      const cells = split(lines[i])
+      const row = {}
+      headers.forEach((h, idx) => row[h] = (cells[idx] ?? '').trim())
+      rows.push(normalizeRow(row))
     }
-  })
+  } else {
+    // Assume positional: number, name, org
+    for (const line of lines) {
+      const [number='', name='', org=''] = split(line).map(x => (x ?? '').trim())
+      rows.push({ number, name, org })
+    }
+  }
+
+  // Filter out empty numbers
+  rows = rows.filter(r => String(r.number || '').trim() !== '')
+
+  console.log('[CSV] Parsed rows:', rows.length, { delim, hasHeader })
+  return rows
 }
+
+function detectDelimiter(line){
+  const counts = {
+    ',': (line.match(/,/g) || []).length,
+    ';': (line.match(/;/g) || []).length,
+    '\t': (line.match(/\t/g) || []).length
+  }
+  // Pick the most frequent delimiter
+  return Object.entries(counts).sort((a,b)=>b[1]-a[1])[0][0] || ','
+}
+
+// Simple splitter supporting minimal quoted fields (no multi-line quotes)
+function splitRow(line, delim){
+  const out = []
+  let cur = ''
+  let inQuotes = false
+  for (let i=0;i<line.length;i++){
+    const ch = line[i]
+    if (ch === '"'){
+      // toggle quotes or handle escaped ""
+      if (inQuotes && line[i+1] === '"'){ cur += '"'; i++; }
+      else inQuotes = !inQuotes
+    } else if (ch === delim && !inQuotes){
+      out.push(cur); cur = ''
+    } else {
+      cur += ch
+    }
+  }
+  out.push(cur)
+  return out
+}
+
+// Normalize headered rows to {number,name,org}
+function normalizeRow(row){
+  const r = {}
+  const get = (keys) => {
+    for (const k of keys){
+      const v = row[k]; if (v != null && String(v).trim() !== '') return String(v).trim()
+    }
+    return ''
+  }
+  r.number = get(['number','nr','delegatenummer','delegate number','delegatenr','id'])
+  r.name   = get(['name','navn'])
+  r.org    = get(['org','organisasjon','kommune','representerer','org.'])
+  return r
+}
+
 
 function AdminView({ state }){
   // Add by delegate number + type
@@ -213,14 +288,40 @@ function AdminView({ state }){
 
   function handleCSV(e){
     const file = e.target.files?.[0]
-    if (!file) return
+    if (!file) {
+      console.log('[CSV] No file selected')
+      return
+    }
+    console.log('[CSV] Selected:', { name: file.name, size: file.size, type: file.type })
+
     const reader = new FileReader()
     reader.onload = () => {
-      const rows = parseCSV(String(reader.result||''))
-      loadDelegates(rows)
+      try {
+        const text = String(reader.result || '')
+        const rows = parseCSV(text)
+        if (!rows.length) {
+          console.warn('[CSV] Parsed 0 rows. Check delimiter or headers.')
+        } else {
+          console.log('[CSV] First 3 rows:', rows.slice(0,3))
+        }
+        // Convert to map and load
+        const map = {}
+        rows.forEach(r => {
+          const num = String(r.number || '').trim()
+          if (num) map[num] = { number: num, name: r.name || `#${num}`, org: r.org || '' }
+        })
+        console.log('[CSV] Loading delegates (count):', Object.keys(map).length)
+        loadDelegates(map)
+      } catch (err){
+        console.error('[CSV] Failed to parse:', err)
+      }
     }
-    reader.readAsText(file, 'utf-8')
+    reader.onerror = (err) => {
+      console.error('[CSV] FileReader error:', err)
+    }
+    reader.readAsText(file, 'utf-8') // handles UTF-8 and UTF-8-BOM
   }
+
   function handleAddByNum(){
     if (!num.trim()) return
     addToQueueByDelegate({ delegateNumber: num.trim(), type })

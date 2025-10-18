@@ -30,7 +30,16 @@ function useHash(){
 }
 function useTimerRerender(enabled){
   const [, setBeat] = useState(0)
-  useEffect(() => { if(!enabled) return; const id=setInterval(()=>setBeat(b=>b+1), 200); return ()=>clearInterval(id) }, [enabled])
+  useEffect(() => { if(!enabled) return; const id=setInterval(()=>setBeat(b=>b+1), 200); return ()=>clearInterval(id) }, [enabled]
+
+      {/* Delegates table — always visible in Admin */}
+      {hash === '#admin' && (
+        <section className="card">
+          <div className="title">Delegates</div>
+          <DelegatesTable state={state} />
+        </section>
+      )}
+)
 }
 
 export default function App(){

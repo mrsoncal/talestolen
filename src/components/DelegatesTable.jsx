@@ -3,6 +3,7 @@ import React from 'react'
 import { updateDelegate, deleteDelegate } from '../store/bus.js'
 
 export default function DelegatesTable({ state }){
+  React.useEffect(()=>{ console.log('[Talestolen] DelegatesTable mounted'); }, [])
   const [editing, setEditing] = React.useState(null) // key of row being edited
   const [form, setForm] = React.useState({ number:'', name:'', org:'' })
   const delegates = state.delegates || {}

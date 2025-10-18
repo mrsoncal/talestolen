@@ -187,10 +187,7 @@ function AdminView({ state }){
             <div className="spacer"></div>
             <div className="muted">Loaded delegates: <b>{Object.keys(state.delegates).length}</b></div>
             <div className="spacer"></div>
-            {/* DEBUG: Inline Delegates table */}
-            <div className="card">
-              <div className="title">Delegates</div>
-              <div className="muted">Inline table (no extra CSS). If you see this, the table is rendering.</div>
+<div className="muted">Inline table (no extra CSS). If you see this, the table is rendering.</div>
               <div className="tableWrap">
                 <table className="table">
                   <thead><tr><th>Nr</th><th>Name</th><th>Representerer</th></tr></thead>
@@ -214,10 +211,7 @@ function AdminView({ state }){
             </div>
     
             <div className="spacer"></div>
-            {/* DEBUG: Inline Delegates table */}
-            <div className="card">
-              <div className="title">Delegates</div>
-              <div className="muted">Inline table (no extra CSS). If you see this, the table is rendering.</div>
+<div className="muted">Inline table (no extra CSS). If you see this, the table is rendering.</div>
               <div className="tableWrap">
                 <table className="table">
                   <thead><tr><th>Nr</th><th>Name</th><th>Representerer</th></tr></thead>
@@ -378,15 +372,7 @@ function AdminView({ state }){
           loadDelegates(rows)
         
         }
-        // Convert to map and load
-        const map = {}
-        rows.forEach(r => {
-          const num = String(r.number || '').trim()
-          if (num) map[num] = { number: num, name: r.name || `#${num}`, org: r.org || '' }
-        })
-        console.log('[CSV] Loading delegates (count):', Object.keys(map).length)
-        loadDelegates(map)
-      } catch (err){
+} catch (err){
         console.error('[CSV] Failed to parse:', err)
       }
     }

@@ -30,9 +30,13 @@ function useHash(){
 }
 function useTimerRerender(enabled){
   const [, setBeat] = useState(0)
-  useEffect(() => { if(!enabled) return; const id=setInterval(()=>setBeat(b=>b+1), 200); return ()=>clearInterval(id) }, [enabled])
-)
+  useEffect(() => {
+    if (!enabled) return
+    const id = setInterval(() => setBeat(b => b + 1), 200)
+    return () => clearInterval(id)
+  }, [enabled])
 }
+
 
 export default function App(){
   console.debug('[Talestolen] render App');
@@ -420,25 +424,34 @@ function TimerFull({ state }){
   )
 }
 
-function QueueFull({ state }){
-  const cur = state.currentSpeaker
+function QueueFull({ state }) {
+  const cur = state?.currentSpeaker ?? null
+  const queue = Array.isArray(state?.queue) ? state.queue : []
+
   return (
-    <div className="full" style={{alignItems:'stretch'}}>
+    <div className="full" style={{ alignItems: 'stretch' }}>
       <div className="header">Speaking Queue</div>
+
       <div className="queue">
-        {cur && (
+        {cur ? (
           <div className="queueRow queueNow">
-            <div className="big">Now: {cur.name} {cur.delegateNumber?`(#${cur.delegateNumber})`:''}</div>
+            <div className="big">
+              Now: {cur.name} {cur.delegateNumber ? `(#${cur.delegateNumber})` : ''}
+            </div>
             <span className="pill">{labelFor(cur.type)}</span>
           </div>
-        )}
-        {state.queue.length === 0 ? (
-          <div className="queueRow"><div className="muted">No one in queue.</div></div>
+        ) : null}
+
+        {queue.length === 0 ? (
+          <div className="queueRow">
+            <div className="muted">No one in queue.</div>
+          </div>
         ) : (
-          state.queue.map((q, i) => (
-            <div key={q.id} className="queueRow">
-              <div className={"big " + (i===0 ? 'next' : '')}>
-                {i===0 ? 'Next: ' : ''}{q.name} {q.delegateNumber?`(#${q.delegateNumber})`:''}
+          queue.map((q, i) => (
+            <div key={q.id ?? `${q.name || 'anon'}-${i}`} className="queueRow">
+              <div className={'big ' + (i === 0 ? 'next' : '')}>
+                {i === 0 ? 'Next: ' : ''}
+                {q.name} {q.delegateNumber ? `(#${q.delegateNumber})` : ''}
                 <div className="muted">{q.org || ' '}</div>
               </div>
               <span className="pill">{labelFor(q.type)}</span>
@@ -446,18 +459,22 @@ function QueueFull({ state }){
           ))
         )}
       </div>
-    
+    </div>
+  )
+}
 
-function labelFor(t){
-  const v = normalizeType(t)
+// --- helpers (keep only one copy in the file) ---
+function labelFor(t) {
+  const v = (typeof normalizeType === 'function' ? normalizeType(t) : t) || ''
   if (v === 'replikk') return 'Replikk'
   if (v === 'svar_replikk') return 'Svar-replikk'
   return 'Innlegg'
 }
 
-function fmt(s){
-  const sec = Math.max(0, Math.floor(s))
-  const m = Math.floor(sec/60).toString().padStart(2,'0')
-  const ss = (sec % 60).toString().padStart(2,'0')
+function fmt(s) {
+  const sec = Number.isFinite(s) ? Math.max(0, Math.floor(s)) : 0
+  const m = String(Math.floor(sec / 60)).padStart(2, '0')
+  const ss = String(sec % 60).padStart(2, '0')
   return `${m}:${ss}`
 }
+

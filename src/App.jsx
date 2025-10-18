@@ -190,6 +190,33 @@ function AdminView({ state }){
             <input className="input wide" type="file" accept=".csv" onChange={handleCSV} />
             <div className="spacer"></div>
             <div className="muted">Loaded delegates: <b>{Object.keys(state.delegates).length}</b></div>
+            <div className="spacer"></div>
+            {/* DEBUG: Inline Delegates table */}
+            <div className="card">
+              <div className="title">Delegates</div>
+              <div className="muted">Inline table (no extra CSS). If you see this, the table is rendering.</div>
+              <div className="tableWrap">
+                <table className="table">
+                  <thead><tr><th>Nr</th><th>Name</th><th>Representerer</th></tr></thead>
+                  <tbody>
+                    {Object.values(state.delegates||{}).length === 0 ? (
+                      <tr><td colSpan={3} className="muted">No delegates loaded yet.</td></tr>
+                    ) : Object.values(state.delegates).sort((a,b)=>{
+                      const ai = parseInt(a.number,10); const bi = parseInt(b.number,10);
+                      if (!Number.isNaN(ai) && !Number.isNaN(bi)) return ai - bi;
+                      return String(a.number||'').localeCompare(String(b.number||''));
+                    }).map(row => (
+                      <tr key={row.number}>
+                        <td>#{row.number}</td>
+                        <td>{row.name||'—'}</td>
+                        <td>{row.org||'—'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+    
           </div>
 
           <div className="card">

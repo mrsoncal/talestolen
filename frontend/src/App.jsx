@@ -6,31 +6,72 @@ import {
   skipCurrent, resetTimer
 } from './store/bus.js'
 
+/** ---------- small hooks ---------- */
 function useStore(){
   const [, setTick] = useState(0)
   useEffect(() => subscribe(() => setTick(t => t+1)), [])
   return getState()
 }
 function useHash(){
-  const [hash, setHash] = useState(() => (location.hash || '#admin').toLowerCase())
-  useEffect(() => { const on=()=>setHash((location.hash || '#admin').toLowerCase()); window.addEventListener('hashchange', on); return ()=>window.removeEventListener('hashchange', on) }, [])
+  const get = () => {
+    const h = (location.hash || '').toLowerCase()
+    return h && h !== '#' ? h : '#home'
+  }
+  const [hash, setHash] = useState(get)
+  useEffect(() => {
+    const on = () => setHash(get())
+    window.addEventListener('hashchange', on)
+    return () => window.removeEventListener('hashchange', on)
+  }, [])
   return hash
 }
 function useTimerRerender(enabled){
   const [, setBeat] = useState(0)
-  useEffect(() => { if(!enabled) return; const id=setInterval(()=>setBeat(b=>b+1), 200); return ()=>clearInterval(id) }, [enabled])
+  useEffect(() => {
+    if (!enabled) return
+    const id = setInterval(() => setBeat(b => b+1), 200)
+    return () => clearInterval(id)
+  }, [enabled])
 }
 
+/** ---------- open helpers (stable targets so we focus existing tabs) ---------- */
+function openAdmin(){ window.open('/#admin', 'talestolen-admin') }
+function openTimer(){ window.open('/#timer', 'talestolen-timer') }
+function openQueue(){ window.open('/#queue', 'talestolen-queue') }
+function openAllThree(){ openAdmin(); openTimer(); openQueue(); }
+
+/** ---------- root ---------- */
 export default function App(){
   const state = useStore()
   const hash = useHash()
-  useTimerRerender(hash === '#timer')
+  useTimerRerender(hash === '#timer') // only tick the timer screen
 
+  if (hash === '#home') return <HomeView />
   if (hash === '#timer') return <TimerFull state={state} />
   if (hash === '#queue') return <QueueFull state={state} />
   return <AdminView state={state} />
 }
 
+/** ---------- Home: buttons that open the three dedicated tabs ---------- */
+function HomeView(){
+  return (
+    <div className="full" style={{gap: 16}}>
+      <div className="title">Talestolen</div>
+      <div className="muted">Open the three live-synced tabs on this device</div>
+      <div className="row" style={{flexWrap:'wrap', justifyContent:'center'}}>
+        <button className="btn" onClick={openAdmin}>Open Admin</button>
+        <button className="btn secondary" onClick={openTimer}>Open Timer</button>
+        <button className="btn ghost" onClick={openQueue}>Open Queue</button>
+      </div>
+      <div className="spacer"></div>
+      <button className="btn" onClick={openAllThree}>Open all three</button>
+      <div className="spacer"></div>
+      <div className="hint">You can also navigate directly to <code>#admin</code>, <code>#timer</code>, or <code>#queue</code>.</div>
+    </div>
+  )
+}
+
+/** ---------- Admin (controls only) ---------- */
 function AdminView({ state }){
   const [name, setName] = useState('')
   const [defDur, setDefDur] = useState(state.defaultDurationSec)
@@ -41,9 +82,10 @@ function AdminView({ state }){
   return (
     <div className="container">
       <nav className="nav">
+        <a className="btn ghost" href="#home">Home</a>
         <a className="btn ghost" href="#admin">Admin</a>
-        <a className="btn ghost" href="#timer">Timer</a>
-        <a className="btn ghost" href="#queue">Queue</a>
+        <a className="btn ghost" href="#timer" target="talestolen-timer">Timer</a>
+        <a className="btn ghost" href="#queue" target="talestolen-queue">Queue</a>
       </nav>
 
       <section className="card">
@@ -127,10 +169,13 @@ function AdminView({ state }){
   )
 
   function handleAdd(){
-    if (!name.trim()) return; addToQueue(name); setName('');
+    if (!name.trim()) return
+    addToQueue(name)
+    setName('')
   }
 }
 
+/** ---------- Timer (fullscreen, clean) ---------- */
 function TimerFull({ state }){
   const cur = state.currentSpeaker
   const secs = cur ? remainingSeconds(cur) : 0
@@ -144,6 +189,7 @@ function TimerFull({ state }){
   )
 }
 
+/** ---------- Queue (fullscreen, clean) ---------- */
 function QueueFull({ state }){
   const cur = state.currentSpeaker
   return (
@@ -171,6 +217,7 @@ function QueueFull({ state }){
   )
 }
 
+/** ---------- fmt helper ---------- */
 function fmt(s){
   const sec = Math.max(0, Math.floor(s))
   const m = Math.floor(sec/60).toString().padStart(2,'0')

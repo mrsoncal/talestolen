@@ -1,0 +1,19 @@
+# Ignore build outputs
+frontend/dist/
+frontend/node_modules/
+
+# Environment and local config
+.env
+.env.local
+.vercel
+.DS_Store
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Editor stuff
+.vscode/
+.idea/

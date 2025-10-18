@@ -31,6 +31,14 @@ function useHash(){
 function useTimerRerender(enabled){
   const [, setBeat] = useState(0)
   useEffect(() => { if(!enabled) return; const id=setInterval(()=>setBeat(b=>b+1), 200); return ()=>clearInterval(id) }, [enabled]
+
+      {/* Delegates table — always visible in Admin */}
+      {hash === '#admin' && (
+        <section className="card">
+          <div className="title">Delegates</div>
+          <DelegatesTable state={state} />
+        </section>
+      )}
 )
 }
 
@@ -182,33 +190,6 @@ function AdminView({ state }){
             <input className="input wide" type="file" accept=".csv" onChange={handleCSV} />
             <div className="spacer"></div>
             <div className="muted">Loaded delegates: <b>{Object.keys(state.delegates).length}</b></div>
-            <div className="spacer"></div>
-            {/* DEBUG: Inline Delegates table */}
-            <div className="card">
-              <div className="title">Delegates</div>
-              <div className="muted">Inline table (no extra CSS). If you see this, the table is rendering.</div>
-              <div className="tableWrap">
-                <table className="table">
-                  <thead><tr><th>Nr</th><th>Name</th><th>Representerer</th></tr></thead>
-                  <tbody>
-                    {Object.values(state.delegates||{}).length === 0 ? (
-                      <tr><td colSpan={3} className="muted">No delegates loaded yet.</td></tr>
-                    ) : Object.values(state.delegates).sort((a,b)=>{
-                      const ai = parseInt(a.number,10); const bi = parseInt(b.number,10);
-                      if (!Number.isNaN(ai) && !Number.isNaN(bi)) return ai - bi;
-                      return String(a.number||'').localeCompare(String(b.number||''));
-                    }).map(row => (
-                      <tr key={row.number}>
-                        <td>#{row.number}</td>
-                        <td>{row.name||'—'}</td>
-                        <td>{row.org||'—'}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-    
             <div className="spacer"></div>
             {/* DEBUG: Inline Delegates table */}
             <div className="card">
@@ -415,7 +396,7 @@ function TimerFull({ state }){
       <div className="name">{cur?.org || ''}</div>
       <div className="timer">{text}</div>
       <div className="status">{cur ? typeLabel + (cur.paused ? ' · Paused' : ' · Live') : 'Waiting for the next speaker…'}</div>
-    function QueueFull({ state }){
+    <!--placeholder-->function QueueFull({ state }){
   const cur = state.currentSpeaker
   return (
     <div className="full" style={{alignItems:'stretch'}}>
@@ -441,7 +422,7 @@ function TimerFull({ state }){
           ))
         )}
       </div>
-    
+    <!--placeholder-->
 // ---- Delegates Table (editable) ----
 function DelegatesTable({ state }){
   const [editing, setEditing] = React.useState(null); // key of row being edited

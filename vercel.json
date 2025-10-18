@@ -1,4 +1,10 @@
 {
-  "buildCommand": "rm -rf node_modules .vite && npm install --include=dev && npx --yes vite build",
-  "outputDirectory": "dist"
+  "headers": [
+    {
+      "source": "/index.html",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-store" }
+      ]
+    }
+  ]
 }

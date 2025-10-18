@@ -2,10 +2,13 @@ import React, { useEffect, useMemo, useState } from 'react'
 import {
   subscribe, getState, remainingSeconds,
   addToQueueByDelegate, addToQueueDirect, removeFromQueue,
-  setTypeDuration, loadDelegates,
+  setTypeDuration, loadDelegates, updateDelegate, deleteDelegate, saveDelegatesToLocalStorageRaw,
   startNext, startSpecific, pauseTimer, resumeTimer,
   skipCurrent, resetTimer, normalizeType
 } from './store/bus.js'
+
+import DelegatesTable from './components/DelegatesTable.jsx'
+import './app-extra.css'
 
 function useStore(){
   const [, setTick] = useState(0)
@@ -27,12 +30,24 @@ function useHash(){
 }
 function useTimerRerender(enabled){
   const [, setBeat] = useState(0)
-  useEffect(() => { if(!enabled) return; const id=setInterval(()=>setBeat(b=>b+1), 200); return ()=>clearInterval(id) }, [enabled])
+  useEffect(() => { if(!enabled) return; const id=setInterval(()=>setBeat(b=>b+1), 200); return ()=>clearInterval(id) }, [enabled]
+
+      {/* Delegates table — always visible in Admin */}
+      {hash === '#admin' && (
+        <section className="card">
+          <div className="title">Delegates</div>
+          <DelegatesTable state={state} />
+        </section>
+      )}
+)
 }
 
 export default function App(){
+  console.debug('[Talestolen] render App');
   const state = useStore()
   const hash = useHash()
+  console.debug('[Talestolen] hash', hash)
+  console.debug('[Talestolen] delegates count', Object.keys(state.delegates||{}).length)
   useTimerRerender(hash === '#timer')
 
   if (hash === '#timer') return <TimerFull state={state} />
@@ -175,6 +190,33 @@ function AdminView({ state }){
             <input className="input wide" type="file" accept=".csv" onChange={handleCSV} />
             <div className="spacer"></div>
             <div className="muted">Loaded delegates: <b>{Object.keys(state.delegates).length}</b></div>
+            <div className="spacer"></div>
+            {/* DEBUG: Inline Delegates table */}
+            <div className="card">
+              <div className="title">Delegates</div>
+              <div className="muted">Inline table (no extra CSS). If you see this, the table is rendering.</div>
+              <div className="tableWrap">
+                <table className="table">
+                  <thead><tr><th>Nr</th><th>Name</th><th>Representerer</th></tr></thead>
+                  <tbody>
+                    {Object.values(state.delegates||{}).length === 0 ? (
+                      <tr><td colSpan={3} className="muted">No delegates loaded yet.</td></tr>
+                    ) : Object.values(state.delegates).sort((a,b)=>{
+                      const ai = parseInt(a.number,10); const bi = parseInt(b.number,10);
+                      if (!Number.isNaN(ai) && !Number.isNaN(bi)) return ai - bi;
+                      return String(a.number||'').localeCompare(String(b.number||''));
+                    }).map(row => (
+                      <tr key={row.number}>
+                        <td>#{row.number}</td>
+                        <td>{row.name||'—'}</td>
+                        <td>{row.org||'—'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+    
           </div>
 
           <div className="card">
@@ -282,11 +324,14 @@ function AdminView({ state }){
             </div>
           </div>
         </div>
-      </section>
+      
+          <DelegatesTable state={state} />
+</section>
     </div>
   )
 
   function handleCSV(e){
+    console.debug('[CSV] handleCSV start')
     const file = e.target.files?.[0]
     if (!file) {
       console.log('[CSV] No file selected')
@@ -299,10 +344,16 @@ function AdminView({ state }){
       try {
         const text = String(reader.result || '')
         const rows = parseCSV(text)
+        console.debug('[CSV] parsed rows', rows.length)
         if (!rows.length) {
           console.warn('[CSV] Parsed 0 rows. Check delimiter or headers.')
         } else {
-          console.log('[CSV] First 3 rows:', rows.slice(0,3))
+          
+          // Save raw CSV and load delegates into state
+          try { saveDelegatesToLocalStorageRaw(text) } catch {}
+          console.debug('[CSV] loadDelegates called');
+          loadDelegates(rows)
+        
         }
         // Convert to map and load
         const map = {}
@@ -345,11 +396,7 @@ function TimerFull({ state }){
       <div className="name">{cur?.org || ''}</div>
       <div className="timer">{text}</div>
       <div className="status">{cur ? typeLabel + (cur.paused ? ' · Paused' : ' · Live') : 'Waiting for the next speaker…'}</div>
-    </div>
-  )
-}
-
-function QueueFull({ state }){
+    <!--placeholder-->function QueueFull({ state }){
   const cur = state.currentSpeaker
   return (
     <div className="full" style={{alignItems:'stretch'}}>
@@ -375,8 +422,82 @@ function QueueFull({ state }){
           ))
         )}
       </div>
+    <!--placeholder-->
+// ---- Delegates Table (editable) ----
+function DelegatesTable({ state }){
+  const [editing, setEditing] = React.useState(null); // key of row being edited
+  const delegates = state.delegates || {};
+  const rows = Object.values(delegates).sort((a,b)=> {
+    const na = String(a.number||''); const nb = String(b.number||'');
+    // numeric-ish sort then lexicographic
+    const ai = parseInt(na,10); const bi = parseInt(nb,10);
+    if (!Number.isNaN(ai) && !Number.isNaN(bi)) return ai - bi;
+    return na.localeCompare(nb);
+  });
+  const [form, setForm] = React.useState({ number:'', name:'', org:'' });
+
+  function startEdit(row){
+    setEditing(row.number);
+    setForm({ number: row.number||'', name: row.name||'', org: row.org||'' });
+  }
+  function cancelEdit(){ setEditing(null); }
+  function saveEdit(){
+    updateDelegate(editing, { number: form.number, name: form.name, org: form.org });
+    setEditing(null);
+  }
+
+  return (
+    
+
+          
+<div className="card">
+      <div className="title">Delegates</div>
+      <div className="muted">Imported delegates are saved locally in your browser. Edit any row below.</div>
+      <div className="tableWrap">
+        <table className="table">
+          <thead>
+            <tr><th style={{width:110}}>Nr</th><th>Name</th><th>Representerer</th><th style={{width:180}}>Actions</th></tr>
+          </thead>
+          <tbody>
+            {rows.length === 0 ? (
+              <tr><td colSpan={4} className="muted">No delegates loaded yet.</td></tr>
+            ) : rows.map(row => (
+              <tr key={row.number}>
+                <td>
+                  {editing===row.number ? (
+                    <input className="input" value={form.number} onChange={e=>setForm(f=>({...f, number:e.target.value}))} />
+                  ) : <span>#{row.number}</span>}
+                </td>
+                <td>
+                  {editing===row.number ? (
+                    <input className="input" value={form.name} onChange={e=>setForm(f=>({...f, name:e.target.value}))} placeholder="Navn" />
+                  ) : (row.name || <span className="muted">—</span>)}
+                </td>
+                <td>
+                  {editing===row.number ? (
+                    <input className="input" value={form.org} onChange={e=>setForm(f=>({...f, org:e.target.value}))} placeholder="Representerer" />
+                  ) : (row.org || <span className="muted">—</span>)}
+                </td>
+                <td>
+                  {editing===row.number ? (
+                    <div className="row gap">
+                      <button className="btn" onClick={saveEdit}>Save</button>
+                      <button className="btn ghost" onClick={cancelEdit}>Cancel</button>
+                    </div>
+                  ) : (
+                    <div className="row gap">
+                      <button className="btn" onClick={()=>startEdit(row)}>Edit</button>
+                      <button className="btn danger" onClick={()=>deleteDelegate(row.number)}>Delete</button>
+                    </div>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
-  )
+  );
 }
 
 function labelFor(t){

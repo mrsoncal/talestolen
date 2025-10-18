@@ -50,7 +50,44 @@ bc.onmessage = (e) => { if (e?.data?.type === 'STATE') applyIncoming(e.data.payl
 window.addEventListener('storage', (e) => { if (e.key === SNAPSHOT_KEY && e.newValue){ try { applyIncoming(JSON.parse(e.newValue)); } catch{} } });
 
 // ---- Actions ----
+
+export function saveDelegatesToLocalStorageRaw(rawText){
+  try {
+    localStorage.setItem('talestolen_delegates_csv_raw', String(rawText||''));
+  } catch {}
+}
+
+export function updateDelegate(oldNumber, patch){
+  const cur = state.delegates || {};
+  const oldKey = String(oldNumber ?? '').trim();
+  if (!oldKey || !cur[oldKey]) return;
+  const nextEntry = { ...cur[oldKey], ...patch };
+  // If number changed, move key
+  const newKey = String(nextEntry.number ?? '').trim();
+  const newMap = { ...cur };
+  if (newKey && newKey !== oldKey){
+    delete newMap[oldKey];
+    newMap[newKey] = { ...nextEntry, number: newKey };
+  } else {
+    newMap[oldKey] = { ...nextEntry, number: oldKey };
+  }
+  const next = bump({ ...state, delegates: newMap });
+  publish(next);
+}
+
+export function deleteDelegate(number){
+  const key = String(number ?? '').trim();
+  if (!key) return;
+  const cur = state.delegates || {};
+  if (!(key in cur)) return;
+  const newMap = { ...cur };
+  delete newMap[key];
+  const next = bump({ ...state, delegates: newMap });
+  publish(next);
+}
+
 export function loadDelegates(arr){
+  try { console.debug('[Bus] loadDelegates', Array.isArray(arr)? arr.length : Object.keys(arr||{}).length) } catch {}
   // arr: [{number,name,org}] or object map
   let map = {};
   if (Array.isArray(arr)){
@@ -66,6 +103,8 @@ export function loadDelegates(arr){
     map = arr;
   }
   const next = bump({ ...state, delegates: map });
+  try { console.debug('[Bus] delegates map size', Object.keys(next.delegates||{}).length) } catch {}
+  /* LOG: after loadDelegates publish */
   publish(next);
 }
 

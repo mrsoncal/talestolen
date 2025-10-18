@@ -31,7 +31,6 @@ function useHash(){
 function useTimerRerender(enabled){
   const [, setBeat] = useState(0)
   useEffect(() => { if(!enabled) return; const id=setInterval(()=>setBeat(b=>b+1), 200); return ()=>clearInterval(id) }, [enabled])
-)
 }
 
 export default function App(){

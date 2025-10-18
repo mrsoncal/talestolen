@@ -31,6 +31,7 @@ function useHash(){
 function useTimerRerender(enabled){
   const [, setBeat] = useState(0)
   useEffect(() => { if(!enabled) return; const id=setInterval(()=>setBeat(b=>b+1), 200); return ()=>clearInterval(id) }, [enabled])
+)
 }
 
 export default function App(){
@@ -446,82 +447,6 @@ function QueueFull({ state }){
         )}
       </div>
     
-// ---- Delegates Table (editable) ----
-function DelegatesTable({ state }){
-  const [editing, setEditing] = React.useState(null); // key of row being edited
-  const delegates = state.delegates || {};
-  const rows = Object.values(delegates).sort((a,b)=> {
-    const na = String(a.number||''); const nb = String(b.number||'');
-    // numeric-ish sort then lexicographic
-    const ai = parseInt(na,10); const bi = parseInt(nb,10);
-    if (!Number.isNaN(ai) && !Number.isNaN(bi)) return ai - bi;
-    return na.localeCompare(nb);
-  });
-  const [form, setForm] = React.useState({ number:'', name:'', org:'' });
-
-  function startEdit(row){
-    setEditing(row.number);
-    setForm({ number: row.number||'', name: row.name||'', org: row.org||'' });
-  }
-  function cancelEdit(){ setEditing(null); }
-  function saveEdit(){
-    updateDelegate(editing, { number: form.number, name: form.name, org: form.org });
-    setEditing(null);
-  }
-
-  return (
-    
-
-          
-<div className="card">
-      <div className="title">Delegates</div>
-      <div className="muted">Imported delegates are saved locally in your browser. Edit any row below.</div>
-      <div className="tableWrap">
-        <table className="table">
-          <thead>
-            <tr><th style={{width:110}}>Nr</th><th>Name</th><th>Representerer</th><th style={{width:180}}>Actions</th></tr>
-          </thead>
-          <tbody>
-            {rows.length === 0 ? (
-              <tr><td colSpan={4} className="muted">No delegates loaded yet.</td></tr>
-            ) : rows.map(row => (
-              <tr key={row.number}>
-                <td>
-                  {editing===row.number ? (
-                    <input className="input" value={form.number} onChange={e=>setForm(f=>({...f, number:e.target.value}))} />
-                  ) : <span>#{row.number}</span>}
-                </td>
-                <td>
-                  {editing===row.number ? (
-                    <input className="input" value={form.name} onChange={e=>setForm(f=>({...f, name:e.target.value}))} placeholder="Navn" />
-                  ) : (row.name || <span className="muted">—</span>)}
-                </td>
-                <td>
-                  {editing===row.number ? (
-                    <input className="input" value={form.org} onChange={e=>setForm(f=>({...f, org:e.target.value}))} placeholder="Representerer" />
-                  ) : (row.org || <span className="muted">—</span>)}
-                </td>
-                <td>
-                  {editing===row.number ? (
-                    <div className="row gap">
-                      <button className="btn" onClick={saveEdit}>Save</button>
-                      <button className="btn ghost" onClick={cancelEdit}>Cancel</button>
-                    </div>
-                  ) : (
-                    <div className="row gap">
-                      <button className="btn" onClick={()=>startEdit(row)}>Edit</button>
-                      <button className="btn danger" onClick={()=>deleteDelegate(row.number)}>Delete</button>
-                    </div>
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-}
 
 function labelFor(t){
   const v = normalizeType(t)

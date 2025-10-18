@@ -285,7 +285,9 @@ function AdminView({ state }){
             </div>
           </div>
         </div>
-      </section>
+      
+          <DelegatesTable state={state} />
+</section>
     </div>
   )
 
@@ -405,7 +407,7 @@ function DelegatesTable({ state }){
   return (
     
 
-          <DelegatesTable state={state} />
+          
 <div className="card">
       <div className="title">Delegates</div>
       <div className="muted">Imported delegates are saved locally in your browser. Edit any row below.</div>

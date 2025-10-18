@@ -43,8 +43,11 @@ function useTimerRerender(enabled){
 }
 
 export default function App(){
+  console.debug('[Talestolen] render App');
   const state = useStore()
   const hash = useHash()
+  console.debug('[Talestolen] hash', hash)
+  console.debug('[Talestolen] delegates count', Object.keys(state.delegates||{}).length)
   useTimerRerender(hash === '#timer')
 
   if (hash === '#timer') return <TimerFull state={state} />
@@ -301,6 +304,7 @@ function AdminView({ state }){
   )
 
   function handleCSV(e){
+    console.debug('[CSV] handleCSV start')
     const file = e.target.files?.[0]
     if (!file) {
       console.log('[CSV] No file selected')
@@ -313,12 +317,14 @@ function AdminView({ state }){
       try {
         const text = String(reader.result || '')
         const rows = parseCSV(text)
+        console.debug('[CSV] parsed rows', rows.length)
         if (!rows.length) {
           console.warn('[CSV] Parsed 0 rows. Check delimiter or headers.')
         } else {
           
           // Save raw CSV and load delegates into state
           try { saveDelegatesToLocalStorageRaw(text) } catch {}
+          console.debug('[CSV] loadDelegates called');
           loadDelegates(rows)
         
         }

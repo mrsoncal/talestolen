@@ -87,6 +87,7 @@ export function deleteDelegate(number){
 }
 
 export function loadDelegates(arr){
+  try { console.debug('[Bus] loadDelegates', Array.isArray(arr)? arr.length : Object.keys(arr||{}).length) } catch {}
   // arr: [{number,name,org}] or object map
   let map = {};
   if (Array.isArray(arr)){
@@ -102,6 +103,8 @@ export function loadDelegates(arr){
     map = arr;
   }
   const next = bump({ ...state, delegates: map });
+  try { console.debug('[Bus] delegates map size', Object.keys(next.delegates||{}).length) } catch {}
+  /* LOG: after loadDelegates publish */
   publish(next);
 }
 

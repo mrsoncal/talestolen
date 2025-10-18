@@ -415,7 +415,7 @@ function TimerFull({ state }){
       <div className="name">{cur?.org || ''}</div>
       <div className="timer">{text}</div>
       <div className="status">{cur ? typeLabel + (cur.paused ? ' · Paused' : ' · Live') : 'Waiting for the next speaker…'}</div>
-    <!--placeholder-->function QueueFull({ state }){
+    function QueueFull({ state }){
   const cur = state.currentSpeaker
   return (
     <div className="full" style={{alignItems:'stretch'}}>
@@ -441,7 +441,7 @@ function TimerFull({ state }){
           ))
         )}
       </div>
-    <!--placeholder-->
+    
 // ---- Delegates Table (editable) ----
 function DelegatesTable({ state }){
   const [editing, setEditing] = React.useState(null); // key of row being edited

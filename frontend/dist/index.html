@@ -16,7 +16,8 @@
       .btn.danger { background:#ff5d6c; color:#26070a; }
       .btn.ghost { background:transparent; border:1px solid #2a3552; color:#e9edf5; }
       .btn:disabled { opacity:.5; cursor:not-allowed; }
-      .input, select { background:#0f1729; color:#e9edf5; border:1px solid #243153; border-radius:10px; padding:10px 12px; width:100%; }
+      .input, select { background:#0f1729; color:#e9edf5; border:1px solid #243153; border-radius:10px; padding:10px 12px; }
+      .input.wide { width:100%; }
       .list { display:flex; flex-direction:column; gap:8px; }
       .title { font-size: 24px; font-weight: 700; margin: 12px 0 8px; }
       .muted { opacity:.7; }
@@ -31,10 +32,7 @@
       .spacer { height:12px; }
       .row-center { display:flex; align-items:center; gap:8px; }
       .nav { display:flex; gap:8px; padding: 12px 0; }
-      
-      /* Fullscreen views */
       .full { min-height: 100vh; display:flex; flex-direction:column; align-items:center; justify-content:center; padding: 24px; }
-      .full .timer { margin: 0; }
       .name { font-size: clamp(18px, 3vw, 32px); opacity:.9; margin-bottom: 12px; }
       .status { font-size: clamp(14px, 2vw, 20px); opacity:.7; margin-top: 8px; }
       .queue { width: min(1100px, 95vw); display:flex; flex-direction:column; gap:10px; }
@@ -42,8 +40,11 @@
       .queueNow { background:#17223a; }
       .pill { border-radius:999px; padding:4px 10px; background:#243153; color:#a9c5ff; }
       .header { width:min(1100px, 95vw); margin: 12px 0 16px; opacity:.85; }
+      .grid-3 { display:grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+      @media (max-width: 700px){ .grid-3 { grid-template-columns: 1fr; } }
+      .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
     </style>
-    <script type="module" crossorigin src="/assets/index-ay4UkmTk.js"></script>
+    <script type="module" crossorigin src="/assets/index-BIkSCHot.js"></script>
   </head>
   <body>
     <div id="root"></div>

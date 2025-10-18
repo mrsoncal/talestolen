@@ -4,6 +4,8 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
+    "clean": "rm -rf dist",
+    "prebuild": "rm -rf dist",
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview"

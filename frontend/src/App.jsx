@@ -177,63 +177,19 @@ function AdminView({ state }){
 
       <section className="card">
         <div className="title">Talestolen · Admin</div>
-        <div className="muted">Add speakers by <span className="mono">delegatenummer</span> and choose speaking type. Upload the delegates CSV to enable auto lookup.</div>
+        <div className="muted">
+          Add speakers by <span className="mono">delegatenummer</span> and choose speaking type.
+          Upload the delegates CSV to enable auto lookup.
+        </div>
         <div className="spacer"></div>
 
+        {/* Row: upload + type defaults */}
         <div className="split">
           <div className="card">
             <div className="title">Upload delegates CSV</div>
             <input className="input wide" type="file" accept=".csv" onChange={handleCSV} />
             <div className="spacer"></div>
             <div className="muted">Loaded delegates: <b>{Object.keys(state.delegates).length}</b></div>
-            <div className="spacer"></div>
-<div className="muted">Inline table (no extra CSS). If you see this, the table is rendering.</div>
-              <div className="tableWrap">
-                <table className="table">
-                  <thead><tr><th>Nr</th><th>Name</th><th>Representerer</th></tr></thead>
-                  <tbody>
-                    {Object.values(state.delegates||{}).length === 0 ? (
-                      <tr><td colSpan={3} className="muted">No delegates loaded yet.</td></tr>
-                    ) : Object.values(state.delegates).sort((a,b)=>{
-                      const ai = parseInt(a.number,10); const bi = parseInt(b.number,10);
-                      if (!Number.isNaN(ai) && !Number.isNaN(bi)) return ai - bi;
-                      return String(a.number||'').localeCompare(String(b.number||''));
-                    }).map(row => (
-                      <tr key={row.number}>
-                        <td>#{row.number}</td>
-                        <td>{row.name||'—'}</td>
-                        <td>{row.org||'—'}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-    
-            <div className="spacer"></div>
-<div className="muted">Inline table (no extra CSS). If you see this, the table is rendering.</div>
-              <div className="tableWrap">
-                <table className="table">
-                  <thead><tr><th>Nr</th><th>Name</th><th>Representerer</th></tr></thead>
-                  <tbody>
-                    {Object.values(state.delegates||{}).length === 0 ? (
-                      <tr><td colSpan={3} className="muted">No delegates loaded yet.</td></tr>
-                    ) : Object.values(state.delegates).sort((a,b)=>{
-                      const ai = parseInt(a.number,10); const bi = parseInt(b.number,10);
-                      if (!Number.isNaN(ai) && !Number.isNaN(bi)) return ai - bi;
-                      return String(a.number||'').localeCompare(String(b.number||''));
-                    }).map(row => (
-                      <tr key={row.number}>
-                        <td>#{row.number}</td>
-                        <td>{row.name||'—'}</td>
-                        <td>{row.org||'—'}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-    
           </div>
 
           <div className="card">
@@ -241,15 +197,30 @@ function AdminView({ state }){
             <div className="grid-3">
               <div>
                 <div className="muted">Innlegg (sec)</div>
-                <input className="input" type="number" min="10" step="5" value={dInnlegg} onChange={e=>{ setDInnlegg(e.target.value); setTypeDuration('innlegg', e.target.value); }} />
+                <input
+                  className="input"
+                  type="number" min="10" step="5"
+                  value={dInnlegg}
+                  onChange={e => { setDInnlegg(e.target.value); setTypeDuration('innlegg', e.target.value); }}
+                />
               </div>
               <div>
                 <div className="muted">Replikk (sec)</div>
-                <input className="input" type="number" min="10" step="5" value={dReplikk} onChange={e=>{ setDReplikk(e.target.value); setTypeDuration('replikk', e.target.value); }} />
+                <input
+                  className="input"
+                  type="number" min="10" step="5"
+                  value={dReplikk}
+                  onChange={e => { setDReplikk(e.target.value); setTypeDuration('replikk', e.target.value); }}
+                />
               </div>
               <div>
                 <div className="muted">Svar-replikk (sec)</div>
-                <input className="input" type="number" min="10" step="5" value={dSvar} onChange={e=>{ setDSvar(e.target.value); setTypeDuration('svar_replikk', e.target.value); }} />
+                <input
+                  className="input"
+                  type="number" min="10" step="5"
+                  value={dSvar}
+                  onChange={e => { setDSvar(e.target.value); setTypeDuration('svar_replikk', e.target.value); }}
+                />
               </div>
             </div>
           </div>
@@ -257,6 +228,7 @@ function AdminView({ state }){
 
         <div className="spacer"></div>
 
+        {/* Row: add by number + manual add */}
         <div className="split">
           <div className="card">
             <div className="title">Add by delegatenummer</div>
@@ -270,7 +242,9 @@ function AdminView({ state }){
               <button className="btn" onClick={handleAddByNum} disabled={!num.trim()}>Legg til</button>
             </div>
             <div className="spacer"></div>
-            <div className="muted">Preview: <b>{previewName}</b>{previewOrg ? ` — ${previewOrg}` : ''} · <span className="badge">{labelFor(type)}</span></div>
+            <div className="muted">
+              Preview: <b>{previewName}</b>{previewOrg ? ` — ${previewOrg}` : ''} · <span className="badge">{labelFor(type)}</span>
+            </div>
           </div>
 
           <div className="card">
@@ -290,6 +264,7 @@ function AdminView({ state }){
 
         <div className="spacer"></div>
 
+        {/* Row: current speaker + queue */}
         <div className="split">
           <div className="card">
             <div className="title">Current Speaker</div>
@@ -297,9 +272,13 @@ function AdminView({ state }){
               {cur ? (
                 <div className="row" style={{justifyContent:'space-between', alignItems:'center'}}>
                   <div>
-                    <div className="big">{cur.name} <span className="muted">({cur.delegateNumber ? `#${cur.delegateNumber}` : '–'})</span></div>
+                    <div className="big">
+                      {cur.name} <span className="muted">({cur.delegateNumber ? `#${cur.delegateNumber}` : '–'})</span>
+                    </div>
                     <div className="muted">{cur.org || ' '}</div>
-                    <div className="muted">Type: <b>{labelFor(cur.type)}</b> • Base: {cur.baseDurationSec}s • {cur.paused ? 'Paused' : 'Running'}</div>
+                    <div className="muted">
+                      Type: <b>{labelFor(cur.type)}</b> • Base: {cur.baseDurationSec}s • {cur.paused ? 'Paused' : 'Running'}
+                    </div>
                   </div>
                   <div className="badge">Remaining: {remain}</div>
                 </div>
@@ -325,7 +304,7 @@ function AdminView({ state }){
                 state.queue.map((q, i) => (
                   <div key={q.id} className="queue-item">
                     <div>
-                      <div className={"big " + (i===0 ? 'next' : '')}>
+                      <div className={'big ' + (i===0 ? 'next' : '')}>
                         {i===0 ? 'Next: ' : ''}{q.name} <span className="muted">({q.delegateNumber ? `#${q.delegateNumber}` : '–'})</span>
                       </div>
                       <div className="muted">{q.org || ' '}</div>
@@ -341,11 +320,13 @@ function AdminView({ state }){
             </div>
           </div>
         </div>
-      
-          <DelegatesTable state={state} />
-</section>
+
+        {/* Single, real delegates table at the very end */}
+        <DelegatesTable state={state} />
+      </section>
     </div>
   )
+
 
   function handleCSV(e){
     console.debug('[CSV] handleCSV start')
@@ -362,17 +343,16 @@ function AdminView({ state }){
         const text = String(reader.result || '')
         const rows = parseCSV(text)
         console.debug('[CSV] parsed rows', rows.length)
+
         if (!rows.length) {
           console.warn('[CSV] Parsed 0 rows. Check delimiter or headers.')
         } else {
-          
           // Save raw CSV and load delegates into state
           try { saveDelegatesToLocalStorageRaw(text) } catch {}
-          console.debug('[CSV] loadDelegates called');
+          console.debug('[CSV] loadDelegates called')
           loadDelegates(rows)
-        
         }
-} catch (err){
+      } catch (err) {
         console.error('[CSV] Failed to parse:', err)
       }
     }
@@ -381,6 +361,7 @@ function AdminView({ state }){
     }
     reader.readAsText(file, 'utf-8') // handles UTF-8 and UTF-8-BOM
   }
+
 
   function handleAddByNum(){
     if (!num.trim()) return

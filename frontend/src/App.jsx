@@ -153,11 +153,10 @@ function AdminView({ state }){
   const previewName = delegate?.name || (num ? `#${num}` : '')
   const previewOrg = delegate?.org || ''
 
-  /* ---- Live sync wiring ---- */  const [answerText, setAnswerText] = useState('')
-  useEffect(() => () => { try { syncRef.current?.close() } catch {} }, [])
+  /* ---- Live sync wiring ---- */  useEffect(() => () => { try { syncRef.current?.close() } catch {} }, [])
 
   // Incoming sync messages -> call existing actions
-  function onSyncMessage(msg) {
+  const onMessageRef = useRef((msg) => {
     if (!msg || !msg.type) return
     switch (msg.type) {
       case 'timer:startNext': {
@@ -180,16 +179,10 @@ function AdminView({ state }){
       }
       default: break
     }
-  }
+  })
   function sendSync(type, payload){
     liveRef.current?.send?.({ type, payload: payload || null })
-  }  async function pasteOfferAndCreateAnswer(){
-    if (!offerText.trim()) return
-    const sdp = await syncRef.current.joinWithOffer(offerText.trim())
-    setAnswerText(sdp)
-    // user copies answer back to host; connection becomes "open" automatically
   }
-
   /* ---- handlers ---- */
   function handleCSV(e){
     const file = e.target.files?.[0]

@@ -35,6 +35,18 @@ const LIVE_SYNC_TAB_CSS = `
 
 `;
 
+// Speaking type → display label
+const TYPE_LABELS = {
+  innlegg: 'Innlegg',
+  replikk: 'Replikk',
+  svar_replikk: 'Svar-replikk',
+};
+
+function labelFor(type) {
+  return (TYPE_LABELS[type] ?? String(type ?? '').trim()) || '—';
+}
+
+
 /* ============================
    Tiny built-in WebRTC sync
    ============================ */

@@ -13,7 +13,10 @@ export default function LiveSyncCard({ onMessageRef }) {
   }, []);
 
   function resetAll(nextMode = 'idle') {
-    try { syncRef.current?.close() } catch {}
+    // Do NOT close if already connected unless explicitly disconnecting
+    if (mode !== 'connected') {
+      try { syncRef.current?.close() } catch {}
+    }
     syncRef.current = null;
     setOfferText('');
     setAnswerText('');
@@ -23,8 +26,10 @@ export default function LiveSyncCard({ onMessageRef }) {
 
   async function startHost() {
     try {
-      resetAll(); // ensure clean
+      resetAll(); // ensure clean (not connected)
       syncRef.current = new LiveSync({ onMessage: (m) => onMessageRef?.current?.(m) });
+      // expose for quick manual debugging in DevTools
+      window._ls = syncRef.current;
       const sdp = await syncRef.current.createOffer();
       setOfferText(sdp);
       setMode('host');
@@ -51,6 +56,7 @@ export default function LiveSyncCard({ onMessageRef }) {
     try {
       resetAll(); // ensure clean
       syncRef.current = new LiveSync({ onMessage: (m) => onMessageRef?.current?.(m) });
+      window._ls = syncRef.current;
       setMode('join');
       console.log('[LiveSyncCard] join mode');
     } catch (e) {
@@ -97,7 +103,6 @@ export default function LiveSyncCard({ onMessageRef }) {
 
       {err && (<div className="muted" style={{ color: 'var(--danger, #c00)', marginTop: 8 }}>{err}</div>)}
 
-      {/* HOST MODE */}
       {mode === 'host' && (
         <>
           <div className="spacer"></div>
@@ -122,7 +127,6 @@ export default function LiveSyncCard({ onMessageRef }) {
         </>
       )}
 
-      {/* JOIN MODE */}
       {mode === 'join' && (
         <>
           <div className="spacer"></div>
@@ -162,11 +166,4 @@ export default function LiveSyncCard({ onMessageRef }) {
       )}
     </div>
   );
-}
-
-// Helper to send messages from parent
-export function useLiveSyncSender(liveSyncRef) {
-  return React.useCallback((msg) => {
-    liveSyncRef.current?.send(msg);
-  }, []);
 }

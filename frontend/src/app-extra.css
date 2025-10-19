@@ -6,23 +6,9 @@
 .btn.danger{background:#8b1e1e}
 .btn.ghost{background:transparent; border:1px solid rgba(255,255,255,0.3)}
 
-/* Hide all LiveSync UI indefinitely */
-.liveSync,
-.LiveSyncCard,
-[data-livesync],
-#liveSync,
-#LiveSync {
-  display: none !important;
-  visibility: hidden !important;
-  opacity: 0 !important;
-}
 
-/* === Temporarily hide LiveSync UI === */
-.card:has(.title:contains("Live Sync")),
-.card .title:contains("Live Sync"),
-.LiveSyncCard,
-#LiveSyncCard,
-[data-component="LiveSyncCard"] {
+/* Hide Live Sync card indefinitely */
+.liveSyncHidden[data-component="LiveSyncCard"] {
   display: none !important;
   visibility: hidden !important;
   opacity: 0 !important;
@@ -31,3 +17,4 @@
   margin: 0 !important;
   padding: 0 !important;
 }
+

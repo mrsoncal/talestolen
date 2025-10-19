@@ -116,7 +116,7 @@ const LiveSyncCard = React.forwardRef(function LiveSyncCard(
   }
 
   return (
-    <div className="card">
+    <div className="card liveSyncHidden" data-component="LiveSyncCard" aria-hidden="true" style={{display: "none"}}>
       <div className="title">Live Sync (LAN / P2P)</div>
 
       <div className="row" style={{ gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>

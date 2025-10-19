@@ -243,7 +243,6 @@ function remainingSeconds(speaker) {
   return Math.max(0, base + extra - elapsed);
 }
 
-
 function AdminView({ state }) {
   // Add by delegate number + type
   const [num, setNum] = useState('');

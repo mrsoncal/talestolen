@@ -1,65 +1,23 @@
 import React from 'react';
 import { LiveSync } from '../sync/webrtcSync';
 
-const LiveSyncCard = React.forwardRef(function LiveSyncCard(
-  { onMessageRef, onConnected },
-  ref
-) {
+export default function LiveSyncCard({ onMessageRef }) {
   const [mode, setMode] = React.useState('idle'); // idle | host | join | connected
   const [offerText, setOfferText] = React.useState('');
   const [answerText, setAnswerText] = React.useState('');
   const [err, setErr] = React.useState('');
   const syncRef = React.useRef(null);
-  const connectedRef = React.useRef(false);
-  const watchTimerRef = React.useRef(null);
-
-  React.useImperativeHandle(ref, () => ({
-    send: (msg) => {
-      try { syncRef.current?.send?.(msg); } catch (e) { console.warn('[LiveSyncCard] send failed:', e); }
-    },
-    disconnect: () => {
-      try { syncRef.current?.close?.(); } catch {}
-      connectedRef.current = false;
-      clearWatch();
-      setMode('idle');
-    },
-    getState: () => ({
-      mode,
-      channelReady: !!syncRef.current?.channel && syncRef.current.channel.readyState === 'open',
-    }),
-  }), [mode]);
 
   React.useEffect(() => {
-    return () => { try { syncRef.current?.close() } catch {}; clearWatch(); };
+    return () => { try { syncRef.current?.close() } catch {} };
   }, []);
 
-  function clearWatch() {
-    if (watchTimerRef.current) {
-      clearInterval(watchTimerRef.current);
-      watchTimerRef.current = null;
-    }
-  }
-  function startWatchForOpen() {
-    clearWatch();
-    watchTimerRef.current = setInterval(() => {
-      const ch = syncRef.current?.channel;
-      if (ch && ch.readyState === 'open') {
-        clearWatch();
-        if (!connectedRef.current) {
-          connectedRef.current = true;
-          setMode('connected');
-          try { onConnected?.(); } catch {}
-          console.log('[LiveSyncCard] channel open → connected');
-        }
-      }
-    }, 150);
-  }
-
   function resetAll(nextMode = 'idle') {
-    try { syncRef.current?.close(); } catch {}
+    // Do NOT close if already connected unless explicitly disconnecting
+    if (mode !== 'connected') {
+      try { syncRef.current?.close() } catch {}
+    }
     syncRef.current = null;
-    connectedRef.current = false;
-    clearWatch();
     setOfferText('');
     setAnswerText('');
     setErr('');
@@ -68,15 +26,17 @@ const LiveSyncCard = React.forwardRef(function LiveSyncCard(
 
   async function startHost() {
     try {
-      resetAll();
+      resetAll(); // ensure clean (not connected)
       syncRef.current = new LiveSync({ onMessage: (m) => onMessageRef?.current?.(m) });
+      // expose for quick manual debugging in DevTools
       window._ls = syncRef.current;
       const sdp = await syncRef.current.createOffer();
       setOfferText(sdp);
       setMode('host');
-      startWatchForOpen();
       console.log('[LiveSyncCard] host mode, offer ready');
-    } catch (e) { console.error(e); setErr('Failed to start Host.'); }
+    } catch (e) {
+      console.error(e); setErr('Failed to start Host.');
+    }
   }
 
   async function acceptAnswer() {
@@ -84,20 +44,24 @@ const LiveSyncCard = React.forwardRef(function LiveSyncCard(
       const payload = (answerText || '').trim();
       if (!payload) return setErr('Paste the Answer first.');
       await syncRef.current.acceptAnswer(payload);
+      setMode('connected');
       setErr('');
-      console.log('[LiveSyncCard] host accepted answer, waiting for channel open…');
-    } catch (e) { console.error(e); setErr('Failed to accept Answer.'); }
+      console.log('[LiveSyncCard] connected (host)');
+    } catch (e) {
+      console.error(e); setErr('Failed to accept Answer.');
+    }
   }
 
   async function startJoin() {
     try {
-      resetAll();
+      resetAll(); // ensure clean
       syncRef.current = new LiveSync({ onMessage: (m) => onMessageRef?.current?.(m) });
       window._ls = syncRef.current;
       setMode('join');
-      startWatchForOpen();
       console.log('[LiveSyncCard] join mode');
-    } catch (e) { console.error(e); setErr('Failed to start Join.'); }
+    } catch (e) {
+      console.error(e); setErr('Failed to start Join.');
+    }
   }
 
   async function pasteOfferAndCreateAnswer() {
@@ -107,8 +71,10 @@ const LiveSyncCard = React.forwardRef(function LiveSyncCard(
       const sdp = await syncRef.current.receiveOffer(payload);
       setAnswerText(sdp);
       setErr('');
-      console.log('[LiveSyncCard] join created answer, waiting for host connect…');
-    } catch (e) { console.error(e); setErr('Failed to create Answer from Offer.'); }
+      console.log('[LiveSyncCard] answer created');
+    } catch (e) {
+      console.error(e); setErr('Failed to create Answer from Offer.');
+    }
   }
 
   async function copyToClipboard(text) {
@@ -200,6 +166,4 @@ const LiveSyncCard = React.forwardRef(function LiveSyncCard(
       )}
     </div>
   );
-});
-
-export default LiveSyncCard;
+}

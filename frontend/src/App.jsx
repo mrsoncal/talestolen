@@ -8,10 +8,77 @@ import {
 } from './store/bus.js'
 
 import DelegatesTable from './components/DelegatesTable.jsx'
-import LiveSyncCard from './components/LiveSync.jsx'
 import './app-extra.css'
 
-/* (removed) Built-in WebRTC sync replaced by components/LiveSync.jsx */
+/* ============================
+   Tiny built-in WebRTC sync
+   ============================ */
+class LiveSync {
+  constructor({ onMessage } = {}) {
+    this.onMessage = onMessage || (() => {})
+    this.pc = new RTCPeerConnection({
+      iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+    })
+    this.channel = null
+
+    // incoming datachannel
+    this.pc.ondatachannel = (e) => {
+      this.channel = e.channel
+      this._bind()
+    }
+  }
+  _bind() {
+    if (!this.channel) return
+    this.channel.onopen = () => console.log('[LiveSync] channel open')
+    this.channel.onclose = () => console.log('[LiveSync] channel closed')
+    this.channel.onmessage = (e) => {
+      try { this.onMessage(JSON.parse(e.data)) }
+      catch (err) { console.warn('[LiveSync] bad message', err) }
+    }
+  }
+  async host() {
+    this.channel = this.pc.createDataChannel('talestolen')
+    this._bind()
+    const offer = await this.pc.createOffer()
+    await this.pc.setLocalDescription(offer)
+    await this._awaitIceComplete()
+    return JSON.stringify(this.pc.localDescription)
+  }
+  async acceptAnswer(answerStr) {
+    const answer = JSON.parse(answerStr)
+    await this.pc.setRemoteDescription(new RTCSessionDescription(answer))
+  }
+  async joinWithOffer(offerStr) {
+    const offer = JSON.parse(offerStr)
+    await this.pc.setRemoteDescription(new RTCSessionDescription(offer))
+    const answer = await this.pc.createAnswer()
+    await this.pc.setLocalDescription(answer)
+    await this._awaitIceComplete()
+    return JSON.stringify(this.pc.localDescription)
+  }
+  async _awaitIceComplete() {
+    if (this.pc.iceGatheringState === 'complete') return
+    await new Promise((resolve) => {
+      const check = () => {
+        if (this.pc.iceGatheringState === 'complete') {
+          this.pc.removeEventListener('icegatheringstatechange', check)
+          resolve()
+        }
+      }
+      this.pc.addEventListener('icegatheringstatechange', check)
+      setTimeout(check, 50)
+    })
+  }
+  send(obj) {
+    if (this.channel?.readyState === 'open') {
+      this.channel.send(JSON.stringify(obj))
+    }
+  }
+  close() {
+    try { this.channel?.close() } catch {}
+    try { this.pc?.close() } catch {}
+  }
+}
 
 /* ============================
    Store / hash / timer helpers
@@ -86,7 +153,6 @@ function parseCSV(text){
       rows.push({ number, name, org })
     }
   }
-  const liveRef = useRef(null)
   return rows.filter(r => String(r.number || '').trim() !== '')
 }
 function detectDelimiter(line){
@@ -153,10 +219,16 @@ function AdminView({ state }){
   const previewName = delegate?.name || (num ? `#${num}` : '')
   const previewOrg = delegate?.org || ''
 
-  /* ---- Live sync wiring ---- */  useEffect(() => () => { try { syncRef.current?.close() } catch {} }, [])
+  /* ---- Live sync wiring ---- */
+  const [syncMode, setSyncMode] = useState('idle') // idle | host | join | connected
+  const [offerText, setOfferText]   = useState('')
+  const [answerText, setAnswerText] = useState('')
+  const syncRef = useRef(null)
+
+  useEffect(() => () => { try { syncRef.current?.close() } catch {} }, [])
 
   // Incoming sync messages -> call existing actions
-  const onMessageRef = useRef((msg) => {
+  function onSyncMessage(msg) {
     if (!msg || !msg.type) return
     switch (msg.type) {
       case 'timer:startNext': {
@@ -179,10 +251,34 @@ function AdminView({ state }){
       }
       default: break
     }
-  })
-  function sendSync(type, payload){
-    liveRef.current?.send?.({ type, payload: payload || null })
   }
+  function sendSync(type, payload){
+    syncRef.current?.send({ type, payload: payload || null })
+  }
+
+  async function hostSync(){
+    syncRef.current?.close()
+    syncRef.current = new LiveSync({ onMessage: onSyncMessage })
+    const sdp = await syncRef.current.host()
+    setOfferText(sdp); setAnswerText(''); setSyncMode('host')
+  }
+  async function acceptAnswer(){
+    if (!answerText.trim()) return
+    await syncRef.current.acceptAnswer(answerText.trim())
+    setSyncMode('connected')
+  }
+  async function startJoin(){
+    syncRef.current?.close()
+    syncRef.current = new LiveSync({ onMessage: onSyncMessage })
+    setOfferText(''); setAnswerText(''); setSyncMode('join')
+  }
+  async function pasteOfferAndCreateAnswer(){
+    if (!offerText.trim()) return
+    const sdp = await syncRef.current.joinWithOffer(offerText.trim())
+    setAnswerText(sdp)
+    // user copies answer back to host; connection becomes "open" automatically
+  }
+
   /* ---- handlers ---- */
   function handleCSV(e){
     const file = e.target.files?.[0]

@@ -325,6 +325,7 @@ function AdminView({ state }) {
   }
 
   return (
+    <>
     <style>{`
 /* --- Live Sync tabs styling --- */
 .btn[data-active="false"],

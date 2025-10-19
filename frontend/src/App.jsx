@@ -240,7 +240,7 @@ const delegate = state.delegates[String((num || '').trim())];
   const previewName = delegate?.name || (num ? `#${num}` : '');
   const previewOrg = delegate?.org || '';
 
-  /* ---- Live sync wiring ---- 
+  /* ---- Live sync wiring ---- */
   const [syncMode, setSyncMode] = useState('idle'); // idle | host | join | connected
   const [offerText, setOfferText] = useState('');
   const [answerText, setAnswerText] = useState('');
@@ -307,7 +307,7 @@ const delegate = state.delegates[String((num || '').trim())];
     const sdp = await syncRef.current.joinWithOffer(offerText.trim());
     setAnswerText(sdp);
     // user copies answer back to host; connection becomes "open" automatically
-  }*/
+  }
 
   /* ---- handlers ---- */
   function handleCSV(e) {

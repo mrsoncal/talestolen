@@ -338,6 +338,16 @@ function AdminView({ state }) {
     setAnswerText(sdp);
     // user copies answer back to host; connection becomes "open" automatically
   }
+  async function finalizeJoin() {
+    try {
+      await syncRef.current?.finalizeJoin(); // We'll define this in webrtcSync.js
+      setSyncMode('connected');
+      console.log('[LiveSyncUI] Join side finalized → connected');
+    } catch (err) {
+      console.error('[LiveSyncUI] finalizeJoin error:', err);
+    }
+  }
+
 
   /* ---- handlers ---- */
   function handleCSV(e) {

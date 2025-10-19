@@ -24,10 +24,11 @@ export default function LiveSyncCard({ onMessageRef }) {
   async function startHost() {
     try {
       resetAll(); // ensure clean
-      syncRef.current = new LiveSync({ onMessage: (m) => onMessageRef.current?.(m) });
+      syncRef.current = new LiveSync({ onMessage: (m) => onMessageRef?.current?.(m) });
       const sdp = await syncRef.current.createOffer();
       setOfferText(sdp);
       setMode('host');
+      console.log('[LiveSyncCard] host mode, offer ready');
     } catch (e) {
       console.error(e); setErr('Failed to start Host.');
     }
@@ -40,6 +41,7 @@ export default function LiveSyncCard({ onMessageRef }) {
       await syncRef.current.acceptAnswer(payload);
       setMode('connected');
       setErr('');
+      console.log('[LiveSyncCard] connected (host)');
     } catch (e) {
       console.error(e); setErr('Failed to accept Answer.');
     }
@@ -48,8 +50,9 @@ export default function LiveSyncCard({ onMessageRef }) {
   async function startJoin() {
     try {
       resetAll(); // ensure clean
-      syncRef.current = new LiveSync({ onMessage: (m) => onMessageRef.current?.(m) });
+      syncRef.current = new LiveSync({ onMessage: (m) => onMessageRef?.current?.(m) });
       setMode('join');
+      console.log('[LiveSyncCard] join mode');
     } catch (e) {
       console.error(e); setErr('Failed to start Join.');
     }
@@ -62,24 +65,20 @@ export default function LiveSyncCard({ onMessageRef }) {
       const sdp = await syncRef.current.receiveOffer(payload);
       setAnswerText(sdp);
       setErr('');
+      console.log('[LiveSyncCard] answer created');
     } catch (e) {
       console.error(e); setErr('Failed to create Answer from Offer.');
     }
   }
 
   async function copyToClipboard(text) {
-    try {
-      await navigator.clipboard?.writeText(text || '');
-    } catch {
-      // best-effort: ignore if not supported
-    }
+    try { await navigator.clipboard?.writeText(text || ''); } catch {}
   }
 
   return (
     <div className="card">
       <div className="title">Live Sync (LAN / P2P)</div>
 
-      {/* Controls row always visible */}
       <div className="row" style={{ gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
         <button className="btn" onClick={startHost} disabled={mode === 'connected'}>Host</button>
         <button className="btn secondary" onClick={startJoin} disabled={mode === 'connected'}>Join</button>
@@ -164,7 +163,6 @@ export default function LiveSyncCard({ onMessageRef }) {
     </div>
   );
 }
-
 
 // Helper to send messages from parent
 export function useLiveSyncSender(liveSyncRef) {

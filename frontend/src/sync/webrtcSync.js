@@ -1,5 +1,5 @@
 // src/sync/webrtcSync.js
-// Minimal WebRTC DataChannel sync with manual copy/paste signaling.
+// Minimal WebRTC DataChannel sync with manual copy/paste signaling (LAN friendly).
 
 const STUN = [{ urls: 'stun:stun.l.google.com:19302' }];
 
@@ -8,15 +8,24 @@ export class LiveSync {
     this.pc = new RTCPeerConnection({ iceServers: STUN });
     this.channel = null;
     this.onMessage = onMessage || (() => {});
-    this.iceQueue = [];
     this._wire();
   }
 
   _wire() {
-    this.pc.onicecandidate = (e) => {
-      if (e.candidate) this.iceQueue.push(e.candidate);
+    // Helpful logs
+    this.pc.onconnectionstatechange = () => {
+      console.log('[LiveSync] pc state:', this.pc.connectionState);
     };
+    this.pc.oniceconnectionstatechange = () => {
+      console.log('[LiveSync] ice state:', this.pc.iceConnectionState);
+    };
+    this.pc.onicegatheringstatechange = () => {
+      console.log('[LiveSync] ice gathering:', this.pc.iceGatheringState);
+    };
+
+    // When joining, host created the channel; we must attach to it here.
     this.pc.ondatachannel = (e) => {
+      console.log('[LiveSync] ondatachannel', e.channel?.label);
       this.channel = e.channel;
       this._bindChannel();
     };
@@ -34,6 +43,7 @@ export class LiveSync {
 
   // HOST FLOW
   async createOffer() {
+    // Host creates the DataChannel
     this.channel = this.pc.createDataChannel('talestolen');
     this._bindChannel();
     const offer = await this.pc.createOffer();
@@ -41,6 +51,7 @@ export class LiveSync {
     await this._waitIceGatheringComplete();
     return JSON.stringify(this.pc.localDescription);
   }
+
   async acceptAnswer(answerStr) {
     const answer = JSON.parse(answerStr);
     await this.pc.setRemoteDescription(new RTCSessionDescription(answer));
@@ -56,19 +67,33 @@ export class LiveSync {
     return JSON.stringify(this.pc.localDescription);
   }
 
-  async _waitIceGatheringComplete() {
-    if (this.pc.iceGatheringState === 'complete') return;
-    await new Promise(res => {
-      const check = () => (this.pc.iceGatheringState === 'complete') && res();
+  // Utilities
+  _waitIceGatheringComplete() {
+    if (this.pc.iceGatheringState === 'complete') return Promise.resolve();
+    return new Promise((resolve) => {
+      const check = () => {
+        if (this.pc.iceGatheringState === 'complete') {
+          this.pc.removeEventListener('icegatheringstatechange', check);
+          resolve();
+        }
+      };
+      this.pc.addEventListener('icegatheringstatechange', check);
+      // Fallback polling (some browsers fire late)
       const iv = setInterval(() => {
-        if (this.pc.iceGatheringState === 'complete') { clearInterval(iv); res(); }
-      }, 50);
+        if (this.pc.iceGatheringState === 'complete') {
+          clearInterval(iv);
+          this.pc.removeEventListener('icegatheringstatechange', check);
+          resolve();
+        }
+      }, 100);
     });
   }
 
   send(obj) {
     if (this.channel && this.channel.readyState === 'open') {
       this.channel.send(JSON.stringify(obj));
+    } else {
+      console.warn('[LiveSync] send skipped; channel not open');
     }
   }
 

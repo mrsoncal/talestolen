@@ -5,71 +5,166 @@ export default function LiveSyncCard({ onMessageRef }) {
   const [mode, setMode] = React.useState('idle'); // idle | host | join | connected
   const [offerText, setOfferText] = React.useState('');
   const [answerText, setAnswerText] = React.useState('');
+  const [err, setErr] = React.useState('');
   const syncRef = React.useRef(null);
 
-  React.useEffect(() => () => { syncRef.current?.close(); }, []);
+  React.useEffect(() => {
+    return () => { try { syncRef.current?.close() } catch {} };
+  }, []);
+
+  function resetAll(nextMode = 'idle') {
+    try { syncRef.current?.close() } catch {}
+    syncRef.current = null;
+    setOfferText('');
+    setAnswerText('');
+    setErr('');
+    setMode(nextMode);
+  }
 
   async function startHost() {
-    syncRef.current = new LiveSync({ onMessage: (m) => onMessageRef.current?.(m) });
-    const sdp = await syncRef.current.createOffer();
-    setOfferText(sdp);
-    setMode('host');
+    try {
+      resetAll(); // ensure clean
+      syncRef.current = new LiveSync({ onMessage: (m) => onMessageRef.current?.(m) });
+      const sdp = await syncRef.current.createOffer();
+      setOfferText(sdp);
+      setMode('host');
+    } catch (e) {
+      console.error(e); setErr('Failed to start Host.');
+    }
   }
 
   async function acceptAnswer() {
-    await syncRef.current.acceptAnswer(answerText);
-    setMode('connected');
+    try {
+      const payload = (answerText || '').trim();
+      if (!payload) return setErr('Paste the Answer first.');
+      await syncRef.current.acceptAnswer(payload);
+      setMode('connected');
+      setErr('');
+    } catch (e) {
+      console.error(e); setErr('Failed to accept Answer.');
+    }
   }
 
   async function startJoin() {
-    syncRef.current = new LiveSync({ onMessage: (m) => onMessageRef.current?.(m) });
-    setMode('join');
+    try {
+      resetAll(); // ensure clean
+      syncRef.current = new LiveSync({ onMessage: (m) => onMessageRef.current?.(m) });
+      setMode('join');
+    } catch (e) {
+      console.error(e); setErr('Failed to start Join.');
+    }
   }
 
   async function pasteOfferAndCreateAnswer() {
-    const sdp = await syncRef.current.receiveOffer(offerText);
-    setAnswerText(sdp);
-    // Now user copies `answerText` back to host
+    try {
+      const payload = (offerText || '').trim();
+      if (!payload) return setErr('Paste the Host Offer first.');
+      const sdp = await syncRef.current.receiveOffer(payload);
+      setAnswerText(sdp);
+      setErr('');
+    } catch (e) {
+      console.error(e); setErr('Failed to create Answer from Offer.');
+    }
+  }
+
+  async function copyToClipboard(text) {
+    try {
+      await navigator.clipboard?.writeText(text || '');
+    } catch {
+      // best-effort: ignore if not supported
+    }
   }
 
   return (
     <div className="card">
       <div className="title">Live Sync (LAN / P2P)</div>
-      {mode === 'idle' && (
-        <div className="row" style={{gap:8}}>
-          <button className="btn" onClick={startHost}>Host</button>
-          <button className="btn secondary" onClick={startJoin}>Join</button>
-        </div>
-      )}
 
+      {/* Controls row always visible */}
+      <div className="row" style={{ gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+        <button className="btn" onClick={startHost} disabled={mode === 'connected'}>Host</button>
+        <button className="btn secondary" onClick={startJoin} disabled={mode === 'connected'}>Join</button>
+
+        {(mode === 'host' || mode === 'join') && (
+          <button className="btn ghost" onClick={() => resetAll('idle')}>Back</button>
+        )}
+        {mode === 'connected' && (
+          <button className="btn danger" onClick={() => resetAll('idle')}>Disconnect</button>
+        )}
+
+        <span className="badge">
+          {mode === 'idle' ? 'Idle' : mode === 'host' ? 'Hosting' : mode === 'join' ? 'Joining' : 'Connected'}
+        </span>
+      </div>
+
+      {err && (<div className="muted" style={{ color: 'var(--danger, #c00)', marginTop: 8 }}>{err}</div>)}
+
+      {/* HOST MODE */}
       {mode === 'host' && (
         <>
-          <div className="muted">1) Share this Offer with the other device</div>
+          <div className="spacer"></div>
+          <div className="muted">1) Share this Offer with the joining device</div>
+          <div className="row" style={{ gap: 8 }}>
+            <button className="btn ghost" onClick={() => copyToClipboard(offerText)}>Copy Offer</button>
+          </div>
           <textarea className="input" rows={6} value={offerText} readOnly />
-          <div className="muted">2) Paste their Answer below and press “Connect”</div>
-          <textarea className="input" rows={6} value={answerText} onChange={e=>setAnswerText(e.target.value)} />
-          <div className="row" style={{gap:8}}>
+
+          <div className="spacer"></div>
+          <div className="muted">2) Paste their Answer here, then press “Connect”</div>
+          <textarea
+            className="input"
+            rows={6}
+            placeholder='Paste {"type":"answer","sdp":"..."} here'
+            value={answerText}
+            onChange={e => setAnswerText(e.target.value)}
+          />
+          <div className="row" style={{ gap: 8 }}>
             <button className="btn" onClick={acceptAnswer}>Connect</button>
           </div>
         </>
       )}
 
+      {/* JOIN MODE */}
       {mode === 'join' && (
         <>
-          <div className="muted">1) Paste the Host’s Offer here</div>
-          <textarea className="input" rows={6} value={offerText} onChange={e=>setOfferText(e.target.value)} />
-          <div className="row" style={{gap:8}}>
+          <div className="spacer"></div>
+          <div className="muted">1) Paste Host’s Offer here</div>
+          <textarea
+            className="input"
+            rows={6}
+            placeholder='Paste {"type":"offer","sdp":"..."} here'
+            value={offerText}
+            onChange={e => setOfferText(e.target.value)}
+          />
+
+          <div className="row" style={{ gap: 8 }}>
             <button className="btn" onClick={pasteOfferAndCreateAnswer}>Create Answer</button>
           </div>
+
+          <div className="spacer"></div>
           <div className="muted">2) Send this Answer back to the Host</div>
+          <div className="row" style={{ gap: 8 }}>
+            <button
+              className="btn ghost"
+              onClick={() => copyToClipboard(answerText)}
+              disabled={!answerText.trim()}
+            >
+              Copy Answer
+            </button>
+          </div>
           <textarea className="input" rows={6} value={answerText} readOnly />
         </>
       )}
 
-      {mode === 'connected' && <div className="badge">Connected</div>}
+      {mode === 'connected' && (
+        <>
+          <div className="spacer"></div>
+          <div className="muted">Connected. Timer actions & type durations mirror instantly.</div>
+        </>
+      )}
     </div>
   );
 }
+
 
 // Helper to send messages from parent
 export function useLiveSyncSender(liveSyncRef) {

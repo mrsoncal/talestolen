@@ -9,6 +9,7 @@ import {
 
 import DelegatesTable from './components/DelegatesTable.jsx'
 import './app-extra.css'
+import useCountdown from './hooks/useCountdown.js'
 
 /* ============================
    Tiny built-in WebRTC sync
@@ -218,8 +219,20 @@ function AdminView({ state }) {
   }, [state.typeDurations]);
 
   const cur = state.currentSpeaker;
-  const remain = useMemo(() => (cur ? fmt(remainingSeconds(cur)) : '00:00'), [cur]);
-  const delegate = state.delegates[String((num || '').trim())];
+  const baseMs = cur ? ((cur.baseDurationSec || state.typeDurations[cur.type] || 90) * 1000) : null;
+  const pausedAccumMs = cur?.accPauseMs || 0;
+  const running = !!cur && !cur.paused;
+  const startedAt = cur ? Math.max(0, (cur.endTimeMs || 0) - (baseMs || 0) - (pausedAccumMs || 0)) : null;
+  const { formatted: remain, isFinished } = useCountdown({ baseMs, startedAt, running, pausedAccumMs });
+
+  // Auto-pause when countdown reaches 00:00
+  useEffect(() => {
+    if (cur && running && isFinished) {
+      try { pauseTimer(); } catch {}
+      try { sendSync && sendSync('timer:pause_auto'); } catch {}
+    }
+  }, [cur, running, isFinished]);
+const delegate = state.delegates[String((num || '').trim())];
   const previewName = delegate?.name || (num ? `#${num}` : '');
   const previewOrg = delegate?.org || '';
 
@@ -600,9 +613,11 @@ function AdminView({ state }) {
    ============================ */
 function TimerFull({ state }){
   const cur = state.currentSpeaker
-  const secs = cur ? remainingSeconds(cur) : 0
-  const text = fmt(secs)
-  const typeLabel = cur ? labelFor(cur.type) : ''
+  const baseMs = cur ? ((cur.baseDurationSec || state.typeDurations[cur.type] || 90) * 1000) : null;
+  const pausedAccumMs = cur?.accPauseMs || 0;
+  const running = !!cur && !cur.paused;
+  const startedAt = cur ? Math.max(0, (cur.endTimeMs || 0) - (baseMs || 0) - (pausedAccumMs || 0)) : null;
+  const { formatted: text } = useCountdown({ baseMs, startedAt, running, pausedAccumMs });const typeLabel = cur ? labelFor(cur.type) : ''
   return (
     <div className="full">
       <div className="name">{cur ? `${cur.name} ${cur.delegateNumber?`(#${cur.delegateNumber})`:''}` : ''}</div>

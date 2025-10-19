@@ -13,6 +13,7 @@ import {
 import DelegatesTable from './components/DelegatesTable.jsx'
 import LiveSyncCard from './components/LiveSync.jsx'
 import './app-extra.css'
+import LiveSync from './sync/webrtcSync.js'
 
 /* (removed) Built-in WebRTC sync replaced by components/LiveSync.jsx */
 

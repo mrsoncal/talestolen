@@ -85,7 +85,7 @@ function parseCSV(text){
       const [number='', name='', org=''] = split(line).map(x => (x ?? '').trim())
       rows.push({ number, name, org })
     }
-  })
+  }
   const liveRef = useRef(null)
   return rows.filter(r => String(r.number || '').trim() !== '')
 }

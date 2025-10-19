@@ -235,14 +235,6 @@ function fmt(totalSec) {
   return String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
 }
 
-// If you DON'T already have remainingSeconds, add this too:
-function remainingSeconds(speaker) {
-  const base = Number(speaker?.baseDurationSec || 0);
-  const extra = Number(speaker?.extraSec || 0);
-  const elapsed = Number(speaker?.elapsedSec || 0);
-  return Math.max(0, base + extra - elapsed);
-}
-
 function AdminView({ state }) {
   // Add by delegate number + type
   const [num, setNum] = useState('');

@@ -107,6 +107,7 @@ class LiveSync {
     try { this.channel?.close() } catch {}
     try { this.pc?.close() } catch {}
   }
+  
 }
 
 /* ============================
@@ -349,8 +350,9 @@ function AdminView({ state }) {
     setManualOrg('');
   }
 
-  return (<>
-    <style dangerouslySetInnerHTML={ __html=LIVE_SYNC_TAB_CSS } />
+  return (
+    <>
+    <style dangerouslySetInnerHTML={{ __html: LIVE_SYNC_TAB_CSS }} />
     <div className="container">
       <nav className="nav">
         <a className="btn ghost" href="#admin">Admin</a>
@@ -617,81 +619,8 @@ function AdminView({ state }) {
         <DelegatesTable state={state} />
       </section>
     </div>
-  </>
+    </>
   );
 }
 
 
-/* ============================
-   Timer & Queue views
-   ============================ */
-
-function TimerFull({ state }){
-  const cur = state.currentSpeaker
-  const secs = cur ? remainingSeconds(cur) : 0
-  const text = fmt(secs)
-  const typeLabel = cur ? labelFor(cur.type) : ''
-  return (
-    <div className="full">
-      <div className="name">{cur ? `${cur.name} ${cur.delegateNumber?`(#${cur.delegateNumber})`:''}` : ''}</div>
-      <div className="name">{cur?.org || ''}</div>
-      <div className="timer">{text}</div>
-      <div className="status">{cur ? typeLabel + (cur.paused ? ' · Paused' : ' · Live') : 'Waiting for the next speaker…'}</div>
-    </div>
-  )
-}
-
-function QueueFull({ state }) {
-  const cur = state?.currentSpeaker ?? null
-  const queue = Array.isArray(state?.queue) ? state.queue : []
-
-  return (
-    <div className="full" style={{ alignItems: 'stretch' }}>
-      <div className="header">Speaking Queue</div>
-
-      <div className="queue">
-        {cur ? (
-          <div className="queueRow queueNow">
-            <div className="big">
-              Now: {cur.name} {cur.delegateNumber ? `(#${cur.delegateNumber})` : ''}
-            </div>
-            <span className="pill">{labelFor(cur.type)}</span>
-          </div>
-        ) : null}
-
-        {queue.length === 0 ? (
-          <div className="queueRow">
-            <div className="muted">No one in queue.</div>
-          </div>
-        ) : (
-          queue.map((q, i) => (
-            <div key={q.id ?? `${q.name || 'anon'}-${i}`} className="queueRow">
-              <div className={'big ' + (i === 0 ? 'next' : '')}>
-                {i === 0 ? 'Next: ' : ''}
-                {q.name} {q.delegateNumber ? `(#${q.delegateNumber})` : ''}
-                <div className="muted">{q.org || ' '}</div>
-              </div>
-              <span className="pill">{labelFor(q.type)}</span>
-            </div>
-          ))
-        )}
-      </div>
-    </div>
-  )
-}
-
-/* ============================
-   helpers
-   ============================ */
-function labelFor(t) {
-  const v = (typeof normalizeType === 'function' ? normalizeType(t) : t) || ''
-  if (v === 'replikk') return 'Replikk'
-  if (v === 'svar_replikk') return 'Svar-replikk'
-  return 'Innlegg'
-}
-function fmt(s) {
-  const sec = Number.isFinite(s) ? Math.max(0, Math.floor(s)) : 0
-  const m = String(Math.floor(sec / 60)).padStart(2, '0')
-  const ss = String(sec % 60).padStart(2, '0')
-  return `${m}:${ss}`
-}

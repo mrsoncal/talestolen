@@ -9,8 +9,9 @@ import {
 
 import DelegatesTable from './components/DelegatesTable.jsx'
 import './app-extra.css'
-import Timer from './components/Timer.jsx';
-import Queue from './components/Queue.jsx';
+import Timer from './components/Timer.jsx';   // or './components/timer.jsx' or './components/Timer.js'
+import Queue from './components/Queue.jsx';   // same idea here
+
 
 
 const LIVE_SYNC_TAB_CSS = `
@@ -44,6 +45,14 @@ const TYPE_LABELS = {
   replikk: 'Replikk',
   svar_replikk: 'Svar-replikk',
 };
+
+// Minimal local stubs (remove if you add real components later)
+function Timer({ state, layout }) {
+  return <div className="muted">Timer view coming soon.</div>;
+}
+function Queue({ state, layout }) {
+  return <div className="muted">Queue view coming soon.</div>;
+}
 
 function TimerFull(props) {
   // pass through what your App is passing (likely { state })

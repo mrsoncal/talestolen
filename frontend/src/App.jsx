@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import {
   subscribe, getState, remainingSeconds,
   addToQueueByDelegate, addToQueueDirect, removeFromQueue,
@@ -10,6 +10,79 @@ import {
 import DelegatesTable from './components/DelegatesTable.jsx'
 import './app-extra.css'
 
+/* ============================
+   Tiny built-in WebRTC sync
+   ============================ */
+class LiveSync {
+  constructor({ onMessage } = {}) {
+    this.onMessage = onMessage || (() => {})
+    this.pc = new RTCPeerConnection({
+      iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+    })
+    this.channel = null
+
+    // incoming datachannel
+    this.pc.ondatachannel = (e) => {
+      this.channel = e.channel
+      this._bind()
+    }
+  }
+  _bind() {
+    if (!this.channel) return
+    this.channel.onopen = () => console.log('[LiveSync] channel open')
+    this.channel.onclose = () => console.log('[LiveSync] channel closed')
+    this.channel.onmessage = (e) => {
+      try { this.onMessage(JSON.parse(e.data)) }
+      catch (err) { console.warn('[LiveSync] bad message', err) }
+    }
+  }
+  async host() {
+    this.channel = this.pc.createDataChannel('talestolen')
+    this._bind()
+    const offer = await this.pc.createOffer()
+    await this.pc.setLocalDescription(offer)
+    await this._awaitIceComplete()
+    return JSON.stringify(this.pc.localDescription)
+  }
+  async acceptAnswer(answerStr) {
+    const answer = JSON.parse(answerStr)
+    await this.pc.setRemoteDescription(new RTCSessionDescription(answer))
+  }
+  async joinWithOffer(offerStr) {
+    const offer = JSON.parse(offerStr)
+    await this.pc.setRemoteDescription(new RTCSessionDescription(offer))
+    const answer = await this.pc.createAnswer()
+    await this.pc.setLocalDescription(answer)
+    await this._awaitIceComplete()
+    return JSON.stringify(this.pc.localDescription)
+  }
+  async _awaitIceComplete() {
+    if (this.pc.iceGatheringState === 'complete') return
+    await new Promise((resolve) => {
+      const check = () => {
+        if (this.pc.iceGatheringState === 'complete') {
+          this.pc.removeEventListener('icegatheringstatechange', check)
+          resolve()
+        }
+      }
+      this.pc.addEventListener('icegatheringstatechange', check)
+      setTimeout(check, 50)
+    })
+  }
+  send(obj) {
+    if (this.channel?.readyState === 'open') {
+      this.channel.send(JSON.stringify(obj))
+    }
+  }
+  close() {
+    try { this.channel?.close() } catch {}
+    try { this.pc?.close() } catch {}
+  }
+}
+
+/* ============================
+   Store / hash / timer helpers
+   ============================ */
 function useStore(){
   const [, setTick] = useState(0)
   useEffect(() => subscribe(() => setTick(t => t+1)), [])
@@ -37,13 +110,12 @@ function useTimerRerender(enabled){
   }, [enabled])
 }
 
-
+/* ============================
+   App (routes)
+   ============================ */
 export default function App(){
-  console.debug('[Talestolen] render App');
   const state = useStore()
   const hash = useHash()
-  console.debug('[Talestolen] hash', hash)
-  console.debug('[Talestolen] delegates count', Object.keys(state.delegates||{}).length)
   useTimerRerender(hash === '#timer')
 
   if (hash === '#timer') return <TimerFull state={state} />
@@ -51,27 +123,19 @@ export default function App(){
   return <AdminView state={state} />
 }
 
-// ---- CSV utils (robust, headerless or headered; , ; or \t) ----
+/* ============================
+   CSV utils
+   ============================ */
 function parseCSV(text){
   if (!text) return []
-
-  // Normalize line endings + strip BOM
   let s = String(text).replace(/\r\n/g, '\n').replace(/\r/g, '\n')
-  if (s.charCodeAt(0) === 0xFEFF) s = s.slice(1) // remove BOM
-
+  if (s.charCodeAt(0) === 0xFEFF) s = s.slice(1)
   const lines = s.split('\n').filter(Boolean)
-
   if (!lines.length) return []
 
-  // Detect delimiter using the first non-empty line
-  const sample = lines[0]
-  const delim = detectDelimiter(sample)
-  // Quick & safe splitter (no full RFC quoting, but handles simple quotes)
+  const delim = detectDelimiter(lines[0])
   const split = (line) => splitRow(line, delim)
-
-  // Decide if file has a header row
-  // Heuristic: if first row contains any letters (e.g., "name","org"), treat as header.
-  // Your file is numbers+names only -> no header.
+  const sample = lines[0]
   const hasHeader = /[A-Za-z]/.test(sample.split(delim)[0]) && /[A-Za-z]/.test(sample)
 
   let rows = []
@@ -84,39 +148,26 @@ function parseCSV(text){
       rows.push(normalizeRow(row))
     }
   } else {
-    // Assume positional: number, name, org
     for (const line of lines) {
       const [number='', name='', org=''] = split(line).map(x => (x ?? '').trim())
       rows.push({ number, name, org })
     }
   }
-
-  // Filter out empty numbers
-  rows = rows.filter(r => String(r.number || '').trim() !== '')
-
-  console.log('[CSV] Parsed rows:', rows.length, { delim, hasHeader })
-  return rows
+  return rows.filter(r => String(r.number || '').trim() !== '')
 }
-
 function detectDelimiter(line){
   const counts = {
     ',': (line.match(/,/g) || []).length,
     ';': (line.match(/;/g) || []).length,
     '\t': (line.match(/\t/g) || []).length
   }
-  // Pick the most frequent delimiter
   return Object.entries(counts).sort((a,b)=>b[1]-a[1])[0][0] || ','
 }
-
-// Simple splitter supporting minimal quoted fields (no multi-line quotes)
 function splitRow(line, delim){
-  const out = []
-  let cur = ''
-  let inQuotes = false
+  const out = []; let cur = ''; let inQuotes = false
   for (let i=0;i<line.length;i++){
     const ch = line[i]
     if (ch === '"'){
-      // toggle quotes or handle escaped ""
       if (inQuotes && line[i+1] === '"'){ cur += '"'; i++; }
       else inQuotes = !inQuotes
     } else if (ch === delim && !inQuotes){
@@ -128,8 +179,6 @@ function splitRow(line, delim){
   out.push(cur)
   return out
 }
-
-// Normalize headered rows to {number,name,org}
 function normalizeRow(row){
   const r = {}
   const get = (keys) => {
@@ -144,28 +193,122 @@ function normalizeRow(row){
   return r
 }
 
-
+/* ============================
+   Admin
+   ============================ */
 function AdminView({ state }){
   // Add by delegate number + type
   const [num, setNum] = useState('')
   const [type, setType] = useState('innlegg')
-  // Optional direct add (fallback if someone not in list needs to speak)
   const [manualName, setManualName] = useState('')
   const [manualOrg, setManualOrg] = useState('')
 
-  // type duration controls
-  const [dInnlegg, setDInnlegg] = useState(state.typeDurations.innlegg)
-  const [dReplikk, setDReplikk] = useState(state.typeDurations.replikk)
-  const [dSvar, setDSvar] = useState(state.typeDurations.svar_replikk)
-
-  useEffect(() => { setDInnlegg(state.typeDurations.innlegg); setDReplikk(state.typeDurations.replikk); setDSvar(state.typeDurations.svar_replikk); }, [state.typeDurations])
+  // type durations
+  const [dInnlegg, setDInnlegg]   = useState(state.typeDurations.innlegg)
+  const [dReplikk, setDReplikk]   = useState(state.typeDurations.replikk)
+  const [dSvar, setDSvar]         = useState(state.typeDurations.svar_replikk)
+  useEffect(() => {
+    setDInnlegg(state.typeDurations.innlegg)
+    setDReplikk(state.typeDurations.replikk)
+    setDSvar(state.typeDurations.svar_replikk)
+  }, [state.typeDurations])
 
   const cur = state.currentSpeaker
   const remain = useMemo(() => (cur ? fmt(remainingSeconds(cur)) : '00:00'), [cur])
-
   const delegate = state.delegates[String(num||'').trim()]
   const previewName = delegate?.name || (num ? `#${num}` : '')
   const previewOrg = delegate?.org || ''
+
+  /* ---- Live sync wiring ---- */
+  const [syncMode, setSyncMode] = useState('idle') // idle | host | join | connected
+  const [offerText, setOfferText]   = useState('')
+  const [answerText, setAnswerText] = useState('')
+  const syncRef = useRef(null)
+
+  useEffect(() => () => { try { syncRef.current?.close() } catch {} }, [])
+
+  // Incoming sync messages -> call existing actions
+  function onSyncMessage(msg) {
+    if (!msg || !msg.type) return
+    switch (msg.type) {
+      case 'timer:startNext': {
+        startNext()
+        break
+      }
+      case 'timer:startSpecific': {
+        if (msg.payload?.id) startSpecific(msg.payload.id)
+        break
+      }
+      case 'timer:pause': pauseTimer(); break
+      case 'timer:resume': resumeTimer(); break
+      case 'timer:reset':  resetTimer();  break
+      case 'timer:setDurations': {
+        const p = msg.payload || {}
+        if (p.innlegg != null) setTypeDuration('innlegg', p.innlegg)
+        if (p.replikk != null) setTypeDuration('replikk', p.replikk)
+        if (p.svar_replikk != null) setTypeDuration('svar_replikk', p.svar_replikk)
+        break
+      }
+      default: break
+    }
+  }
+  function sendSync(type, payload){
+    syncRef.current?.send({ type, payload: payload || null })
+  }
+
+  async function hostSync(){
+    syncRef.current?.close()
+    syncRef.current = new LiveSync({ onMessage: onSyncMessage })
+    const sdp = await syncRef.current.host()
+    setOfferText(sdp); setAnswerText(''); setSyncMode('host')
+  }
+  async function acceptAnswer(){
+    if (!answerText.trim()) return
+    await syncRef.current.acceptAnswer(answerText.trim())
+    setSyncMode('connected')
+  }
+  async function startJoin(){
+    syncRef.current?.close()
+    syncRef.current = new LiveSync({ onMessage: onSyncMessage })
+    setOfferText(''); setAnswerText(''); setSyncMode('join')
+  }
+  async function pasteOfferAndCreateAnswer(){
+    if (!offerText.trim()) return
+    const sdp = await syncRef.current.joinWithOffer(offerText.trim())
+    setAnswerText(sdp)
+    // user copies answer back to host; connection becomes "open" automatically
+  }
+
+  /* ---- handlers ---- */
+  function handleCSV(e){
+    const file = e.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = () => {
+      try {
+        const text = String(reader.result || '')
+        const rows = parseCSV(text)
+        if (rows.length) {
+          try { saveDelegatesToLocalStorageRaw(text) } catch {}
+          loadDelegates(rows)
+        }
+      } catch (err) {
+        console.error('[CSV] parse error:', err)
+      }
+    }
+    reader.onerror = (err) => console.error('[CSV] FileReader error:', err)
+    reader.readAsText(file, 'utf-8')
+  }
+  function handleAddByNum(){
+    if (!num.trim()) return
+    addToQueueByDelegate({ delegateNumber: num.trim(), type })
+    setNum('')
+  }
+  function handleAddManual(){
+    if (!manualName.trim()) return
+    addToQueueDirect({ name: manualName.trim(), org: manualOrg.trim(), type })
+    setManualName(''); setManualOrg('')
+  }
 
   return (
     <div className="container">
@@ -182,6 +325,40 @@ function AdminView({ state }){
           Upload the delegates CSV to enable auto lookup.
         </div>
         <div className="spacer"></div>
+
+        {/* Live Sync card */}
+        <div className="card" style={{marginBottom:12}}>
+          <div className="title">Live Sync (LAN / P2P)</div>
+          {syncMode === 'idle' && (
+            <div className="row" style={{gap:8}}>
+              <button className="btn" onClick={hostSync}>Host</button>
+              <button className="btn secondary" onClick={startJoin}>Join</button>
+            </div>
+          )}
+          {syncMode === 'host' && (
+            <>
+              <div className="muted">1) Share this Offer with the joining device</div>
+              <textarea className="input" rows={6} value={offerText} readOnly />
+              <div className="muted">2) Paste their Answer here</div>
+              <textarea className="input" rows={6} value={answerText} onChange={e=>setAnswerText(e.target.value)} />
+              <div className="row" style={{gap:8}}>
+                <button className="btn" onClick={acceptAnswer}>Connect</button>
+              </div>
+            </>
+          )}
+          {syncMode === 'join' && (
+            <>
+              <div className="muted">1) Paste Host’s Offer here</div>
+              <textarea className="input" rows={6} value={offerText} onChange={e=>setOfferText(e.target.value)} />
+              <div className="row" style={{gap:8}}>
+                <button className="btn" onClick={pasteOfferAndCreateAnswer}>Create Answer</button>
+              </div>
+              <div className="muted">2) Send this Answer back to the Host</div>
+              <textarea className="input" rows={6} value={answerText} readOnly />
+            </>
+          )}
+          {syncMode === 'connected' && <div className="badge">Connected</div>}
+        </div>
 
         {/* Row: upload + type defaults */}
         <div className="split">
@@ -201,7 +378,10 @@ function AdminView({ state }){
                   className="input"
                   type="number" min="10" step="5"
                   value={dInnlegg}
-                  onChange={e => { setDInnlegg(e.target.value); setTypeDuration('innlegg', e.target.value); }}
+                  onChange={e => { 
+                    const val = e.target.value; setDInnlegg(val); setTypeDuration('innlegg', val)
+                    sendSync('timer:setDurations', { innlegg: val })
+                  }}
                 />
               </div>
               <div>
@@ -210,7 +390,10 @@ function AdminView({ state }){
                   className="input"
                   type="number" min="10" step="5"
                   value={dReplikk}
-                  onChange={e => { setDReplikk(e.target.value); setTypeDuration('replikk', e.target.value); }}
+                  onChange={e => { 
+                    const val = e.target.value; setDReplikk(val); setTypeDuration('replikk', val)
+                    sendSync('timer:setDurations', { replikk: val })
+                  }}
                 />
               </div>
               <div>
@@ -219,7 +402,10 @@ function AdminView({ state }){
                   className="input"
                   type="number" min="10" step="5"
                   value={dSvar}
-                  onChange={e => { setDSvar(e.target.value); setTypeDuration('svar_replikk', e.target.value); }}
+                  onChange={e => { 
+                    const val = e.target.value; setDSvar(val); setTypeDuration('svar_replikk', val)
+                    sendSync('timer:setDurations', { svar_replikk: val })
+                  }}
                 />
               </div>
             </div>
@@ -287,11 +473,11 @@ function AdminView({ state }){
               )}
             </div>
             <div className="row">
-              <button className="btn" onClick={startNext} disabled={!!state.currentSpeaker || state.queue.length===0}>Start next</button>
-              <button className="btn secondary" onClick={pauseTimer} disabled={!cur || cur.paused}>Pause</button>
-              <button className="btn secondary" onClick={resumeTimer} disabled={!cur || !cur.paused}>Resume</button>
-              <button className="btn danger" onClick={skipCurrent} disabled={!cur}>Skip</button>
-              <button className="btn ghost" onClick={resetTimer} disabled={!cur}>Reset</button>
+              <button className="btn" onClick={() => { startNext(); sendSync('timer:startNext') }} disabled={!!state.currentSpeaker || state.queue.length===0}>Start next</button>
+              <button className="btn secondary" onClick={() => { pauseTimer();  sendSync('timer:pause')  }} disabled={!cur || cur.paused}>Pause</button>
+              <button className="btn secondary" onClick={() => { resumeTimer(); sendSync('timer:resume') }} disabled={!cur || !cur.paused}>Resume</button>
+              <button className="btn danger"    onClick={() => { skipCurrent(); sendSync('timer:reset')  }} disabled={!cur}>Skip</button>
+              <button className="btn ghost"     onClick={() => { resetTimer(); sendSync('timer:reset')  }} disabled={!cur}>Reset</button>
             </div>
           </div>
 
@@ -311,7 +497,7 @@ function AdminView({ state }){
                       <div className="muted">Type: <b>{labelFor(q.type)}</b></div>
                     </div>
                     <div className="row">
-                      <button className="btn secondary" onClick={()=>startSpecific(q.id)}>Start</button>
+                      <button className="btn secondary" onClick={()=>{ startSpecific(q.id); sendSync('timer:startSpecific', { id: q.id }) }}>Start</button>
                       <button className="btn ghost" onClick={()=>removeFromQueue(q.id)}>Remove</button>
                     </div>
                   </div>
@@ -326,55 +512,11 @@ function AdminView({ state }){
       </section>
     </div>
   )
-
-
-  function handleCSV(e){
-    console.debug('[CSV] handleCSV start')
-    const file = e.target.files?.[0]
-    if (!file) {
-      console.log('[CSV] No file selected')
-      return
-    }
-    console.log('[CSV] Selected:', { name: file.name, size: file.size, type: file.type })
-
-    const reader = new FileReader()
-    reader.onload = () => {
-      try {
-        const text = String(reader.result || '')
-        const rows = parseCSV(text)
-        console.debug('[CSV] parsed rows', rows.length)
-
-        if (!rows.length) {
-          console.warn('[CSV] Parsed 0 rows. Check delimiter or headers.')
-        } else {
-          // Save raw CSV and load delegates into state
-          try { saveDelegatesToLocalStorageRaw(text) } catch {}
-          console.debug('[CSV] loadDelegates called')
-          loadDelegates(rows)
-        }
-      } catch (err) {
-        console.error('[CSV] Failed to parse:', err)
-      }
-    }
-    reader.onerror = (err) => {
-      console.error('[CSV] FileReader error:', err)
-    }
-    reader.readAsText(file, 'utf-8') // handles UTF-8 and UTF-8-BOM
-  }
-
-
-  function handleAddByNum(){
-    if (!num.trim()) return
-    addToQueueByDelegate({ delegateNumber: num.trim(), type })
-    setNum('')
-  }
-  function handleAddManual(){
-    if (!manualName.trim()) return
-    addToQueueDirect({ name: manualName.trim(), org: manualOrg.trim(), type })
-    setManualName(''); setManualOrg('')
-  }
 }
 
+/* ============================
+   Timer & Queue views
+   ============================ */
 function TimerFull({ state }){
   const cur = state.currentSpeaker
   const secs = cur ? remainingSeconds(cur) : 0
@@ -386,7 +528,6 @@ function TimerFull({ state }){
       <div className="name">{cur?.org || ''}</div>
       <div className="timer">{text}</div>
       <div className="status">{cur ? typeLabel + (cur.paused ? ' · Paused' : ' · Live') : 'Waiting for the next speaker…'}</div>
-    
     </div>
   )
 }
@@ -430,18 +571,18 @@ function QueueFull({ state }) {
   )
 }
 
-// --- helpers (keep only one copy in the file) ---
+/* ============================
+   helpers
+   ============================ */
 function labelFor(t) {
   const v = (typeof normalizeType === 'function' ? normalizeType(t) : t) || ''
   if (v === 'replikk') return 'Replikk'
   if (v === 'svar_replikk') return 'Svar-replikk'
   return 'Innlegg'
 }
-
 function fmt(s) {
   const sec = Number.isFinite(s) ? Math.max(0, Math.floor(s)) : 0
   const m = String(Math.floor(sec / 60)).padStart(2, '0')
   const ss = String(sec % 60).padStart(2, '0')
   return `${m}:${ss}`
 }
-

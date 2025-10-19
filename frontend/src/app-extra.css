@@ -16,3 +16,18 @@
   visibility: hidden !important;
   opacity: 0 !important;
 }
+
+/* === Temporarily hide LiveSync UI === */
+.card:has(.title:contains("Live Sync")),
+.card .title:contains("Live Sync"),
+.LiveSyncCard,
+#LiveSyncCard,
+[data-component="LiveSyncCard"] {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}

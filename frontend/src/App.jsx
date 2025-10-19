@@ -10,6 +10,31 @@ import {
 import DelegatesTable from './components/DelegatesTable.jsx'
 import './app-extra.css'
 
+const LIVE_SYNC_TAB_CSS = `
+
+/* --- Live Sync tabs styling --- */
+.btn[data-active="false"],
+.btn.secondary[data-active="false"] {
+  background-color: #1b2638;
+  color: #d8e1f0;
+}
+.btn[data-active="true"],
+.btn.active {
+  background-color: #3b82f6;
+  color: #fff;
+}
+.btn[data-active="false"]:hover {
+  filter: brightness(1.2);
+  background-color: #22324a;
+}
+.btn.secondary.active,
+.btn.secondary[data-active="true"] {
+  background-color: #3b82f6 !important;
+  color: #fff !important;
+}
+
+`;
+
 /* ============================
    Tiny built-in WebRTC sync
    ============================ */
@@ -324,30 +349,8 @@ function AdminView({ state }) {
     setManualOrg('');
   }
 
-  return (
-    <>
-    <style>{`
-/* --- Live Sync tabs styling --- */
-.btn[data-active="false"],
-.btn.secondary[data-active="false"] {
-  background-color: #1b2638;
-  color: #d8e1f0;
-}
-.btn[data-active="true"],
-.btn.active {
-  background-color: #3b82f6;
-  color: #fff;
-}
-.btn[data-active="false"]:hover {
-  filter: brightness(1.2);
-  background-color: #22324a;
-}
-.btn.secondary.active,
-.btn.secondary[data-active="true"] {
-  background-color: #3b82f6 !important;
-  color: #fff !important;
-}
-`}</style>
+  return (<>
+    <style dangerouslySetInnerHTML={ __html=LIVE_SYNC_TAB_CSS } />
     <div className="container">
       <nav className="nav">
         <a className="btn ghost" href="#admin">Admin</a>
@@ -614,6 +617,7 @@ function AdminView({ state }) {
         <DelegatesTable state={state} />
       </section>
     </div>
+  </>
   );
 }
 
@@ -621,6 +625,7 @@ function AdminView({ state }) {
 /* ============================
    Timer & Queue views
    ============================ */
+
 function TimerFull({ state }){
   const cur = state.currentSpeaker
   const secs = cur ? remainingSeconds(cur) : 0

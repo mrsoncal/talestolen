@@ -5,7 +5,10 @@ const LiveSyncCard = React.forwardRef(function LiveSyncCard(
   { onMessageRef, onConnected },
   ref
 ) {
-  const [mode, setMode] = React.useState('idle'); // idle | host | join | connected
+  
+  // Hard-hide LiveSync UI
+  return null;
+const [mode, setMode] = React.useState('idle'); // idle | host | join | connected
   const [offerText, setOfferText] = React.useState('');
   const [answerText, setAnswerText] = React.useState('');
   const [err, setErr] = React.useState('');

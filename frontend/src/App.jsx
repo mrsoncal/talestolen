@@ -325,6 +325,28 @@ function AdminView({ state }) {
   }
 
   return (
+    <style>{`
+/* --- Live Sync tabs styling --- */
+.btn[data-active="false"],
+.btn.secondary[data-active="false"] {
+  background-color: #1b2638;
+  color: #d8e1f0;
+}
+.btn[data-active="true"],
+.btn.active {
+  background-color: #3b82f6;
+  color: #fff;
+}
+.btn[data-active="false"]:hover {
+  filter: brightness(1.2);
+  background-color: #22324a;
+}
+.btn.secondary.active,
+.btn.secondary[data-active="true"] {
+  background-color: #3b82f6 !important;
+  color: #fff !important;
+}
+`}</style>
     <div className="container">
       <nav className="nav">
         <a className="btn ghost" href="#admin">Admin</a>

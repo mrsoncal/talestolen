@@ -9,6 +9,9 @@ import {
 
 import DelegatesTable from './components/DelegatesTable.jsx'
 import './app-extra.css'
+import Timer from './components/Timer.jsx';
+import Queue from './components/Queue.jsx';
+
 
 const LIVE_SYNC_TAB_CSS = `
 
@@ -41,6 +44,25 @@ const TYPE_LABELS = {
   replikk: 'Replikk',
   svar_replikk: 'Svar-replikk',
 };
+
+function TimerFull(props) {
+  // pass through what your App is passing (likely { state })
+  return (
+    <section className="card">
+      <div className="title">Timer</div>
+      <Timer {...props} layout="full" />
+    </section>
+  );
+}
+
+function QueueFull(props) {
+  return (
+    <section className="card">
+      <div className="title">Queue</div>
+      <Queue {...props} layout="full" />
+    </section>
+  );
+}
 
 function labelFor(type) {
   return (TYPE_LABELS[type] ?? String(type ?? '').trim()) || '—';

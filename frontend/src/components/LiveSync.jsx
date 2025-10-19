@@ -1,7 +1,7 @@
 import React from 'react';
 import { LiveSync } from '../sync/webrtcSync';
 
-/*const LiveSyncCard = React.forwardRef(function LiveSyncCard(
+const LiveSyncCard = React.forwardRef(function LiveSyncCard(
   { onMessageRef, onConnected },
   ref
 ) {
@@ -202,4 +202,4 @@ import { LiveSync } from '../sync/webrtcSync';
   );
 });
 
-export default LiveSyncCard;*/
+export default LiveSyncCard;

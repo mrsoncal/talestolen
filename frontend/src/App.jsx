@@ -14,6 +14,8 @@ import useCountdown from './hooks/useCountdown.js'
 /* ============================
    Tiny built-in WebRTC sync
    ============================ */
+
+/*
 class LiveSync {
   constructor({ onMessage } = {}) {
     this.onMessage = onMessage || (() => {})
@@ -84,6 +86,8 @@ class LiveSync {
     try { this.pc?.close() } catch {}
   }
 }
+
+*/
 
 /* ============================
    Store / hash / timer helpers

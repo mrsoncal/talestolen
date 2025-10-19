@@ -341,90 +341,106 @@ function AdminView({ state }) {
         <div className="spacer"></div>
 
         {/* Live Sync card */}
-        <div className="card" style={{ marginBottom: 12 }}>
-          <div className="title">Live Sync (LAN / P2P)</div>
+<div className="card" style={{ marginBottom: 12 }}>
+  <div className="title">Live Sync (LAN / P2P)</div>
 
-          {syncMode === 'idle' && (
-            <div className="row" style={{ gap: 8 }}>
-              <button className="btn" onClick={hostSync}>Host</button>
-              <button className="btn secondary" onClick={startJoin}>Join</button>
-            </div>
-          )}
+  {/* Tabs */}
+  <div className="row" style={{ gap: 8, marginBottom: 8 }}>
+    <button
+      type="button"
+      className={`btn ${syncMode === 'host' ? 'active' : ''}`}
+      onClick={() => {
+        if (syncMode !== 'host') hostSync();
+      }}
+      aria-pressed={syncMode === 'host'}
+      data-active={syncMode === 'host'}
+    >
+      Host
+    </button>
+    <button
+      type="button"
+      className={`btn secondary ${syncMode === 'join' ? 'active' : ''}`}
+      onClick={() => {
+        if (syncMode !== 'join') startJoin();
+      }}
+      aria-pressed={syncMode === 'join'}
+      data-active={syncMode === 'join'}
+    >
+      Join
+    </button>
 
-          {syncMode === 'host' && (
-            <>
-              <div className="row" style={{ gap: 8, marginBottom: 8 }}>
-                <button className="btn ghost" onClick={() => resetSync('idle')}>Back</button>
-                <span className="badge">Hosting</span>
-              </div>
+    {syncMode === 'connected' && <span className="badge">Connected</span>}
+    {(syncMode === 'host' || syncMode === 'join') && (
+      <button
+        type="button"
+        className="btn ghost"
+        onClick={() => resetSync('idle')}
+        style={{ marginLeft: 'auto' }}
+      >
+        Back
+      </button>
+    )}
+  </div>
 
-              <div className="muted">1) Share this Offer with the joining device</div>
-              <textarea
-                className="input"
-                rows={6}
-                value={offerText}
-                readOnly
-                style={{ minHeight: 120, display: 'block', opacity: 1, visibility: 'visible' }}
-              />
-              <div style={{ marginTop: 8 }}>
-                <small className="muted">Fallback view:</small>
-                <pre style={{ whiteSpace: 'pre-wrap', padding: 8, border: '1px dashed #999', borderRadius: 8, maxHeight: 240, overflow: 'auto' }}>
-                  {offerText}
-                </pre>
-              </div>
+  {/* Host body */}
+  {syncMode === 'host' && (
+    <>
+      <div className="muted">1) Share this Offer with the joining device</div>
+      <textarea
+        className="input"
+        rows={6}
+        value={offerText}
+        readOnly
+        style={{ minHeight: 120, display: 'block' }}
+      />
 
-              <div className="muted">2) Paste their Answer here</div>
-              <textarea
-                className="input"
-                rows={6}
-                value={answerText}
-                onChange={e => setAnswerText(e.target.value)}
-              />
-              <div className="row" style={{ gap: 8 }}>
-                <button className="btn" onClick={acceptAnswer}>Connect</button>
-              </div>
-            </>
-          )}
+      <div className="muted" style={{ marginTop: 8 }}>2) Paste their Answer here</div>
+      <textarea
+        className="input"
+        rows={6}
+        value={answerText}
+        onChange={e => setAnswerText(e.target.value)}
+        style={{ minHeight: 120, display: 'block' }}
+      />
 
-          {syncMode === 'join' && (
-            <>
-              <div className="row" style={{ gap: 8, marginBottom: 8 }}>
-                <button className="btn ghost" onClick={() => resetSync('idle')}>Back</button>
-                <span className="badge">Joining</span>
-              </div>
+      <div className="row" style={{ gap: 8, marginTop: 8 }}>
+        <button type="button" className="btn" onClick={acceptAnswer}>Connect</button>
+      </div>
+    </>
+  )}
 
-              <div className="muted">1) Paste Host’s Offer here</div>
-              <textarea
-                className="input"
-                rows={6}
-                value={offerText}
-                onChange={e => setOfferText(e.target.value)}
-              />
-              <div className="row" style={{ gap: 8 }}>
-                <button className="btn" onClick={pasteOfferAndCreateAnswer}>Create Answer</button>
-              </div>
+  {/* Join body */}
+  {syncMode === 'join' && (
+    <>
+      <div className="muted">1) Paste Host’s Offer here</div>
+      <textarea
+        className="input"
+        rows={6}
+        value={offerText}
+        onChange={e => setOfferText(e.target.value)}
+        style={{ minHeight: 120, display: 'block' }}
+      />
 
-              <div className="muted">2) Send this Answer back to the Host</div>
-              <textarea
-                className="input"
-                rows={6}
-                value={answerText}
-                readOnly
-                style={{ minHeight: 120, display: 'block', opacity: 1, visibility: 'visible' }}
-              />
-              <div style={{ marginTop: 8 }}>
-                <small className="muted">Fallback view:</small>
-                <pre style={{ whiteSpace: 'pre-wrap', padding: 8, border: '1px dashed #999', borderRadius: 8, maxHeight: 240, overflow: 'auto' }}>
-                  {answerText}
-                </pre>
-              </div>
-            </>
-          )}
+      <div className="row" style={{ gap: 8, marginTop: 8 }}>
+        <button type="button" className="btn" onClick={pasteOfferAndCreateAnswer}>
+          Create Answer
+        </button>
+      </div>
 
-          {syncMode === 'connected' && <div className="badge">Connected</div>}
-        </div>
+      <div className="muted" style={{ marginTop: 8 }}>2) Send this Answer back to the Host</div>
+      <textarea
+        className="input"
+        rows={6}
+        value={answerText}
+        readOnly
+        style={{ minHeight: 120, display: 'block' }}
+      />
+    </>
+  )}
+</div>
 
-        {/* Row: upload + type defaults */}
+
+{/* Row: upload + type defaults */}
         <div className="split">
           <div className="card">
             <div className="title">Upload delegates CSV</div>

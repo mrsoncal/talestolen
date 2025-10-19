@@ -56,19 +56,23 @@ class LiveSync {
     await this._awaitIceComplete()
     return JSON.stringify(this.pc.localDescription)
   }
-  async _awaitIceComplete() {
+  async _awaitIceComplete(timeoutMs = 3000) {
     if (this.pc.iceGatheringState === 'complete') return
     await new Promise((resolve) => {
-      const check = () => {
+      const onChange = () => {
         if (this.pc.iceGatheringState === 'complete') {
-          this.pc.removeEventListener('icegatheringstatechange', check)
-          resolve()
+          cleanup('event')
         }
       }
-      this.pc.addEventListener('icegatheringstatechange', check)
-      setTimeout(check, 50)
+      const cleanup = () => {
+        try { this.pc.removeEventListener('icegatheringstatechange', onChange) } catch {}
+        resolve()
+      }
+      this.pc.addEventListener('icegatheringstatechange', onChange)
+      setTimeout(() => cleanup('timeout'), timeoutMs)
     })
   }
+  
   send(obj) {
     if (this.channel?.readyState === 'open') {
       this.channel.send(JSON.stringify(obj))

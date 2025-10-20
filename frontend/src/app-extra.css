@@ -20,27 +20,35 @@
 
 
 
-/* === Talestolen layout overrides (2025-10-20) === */
+/* === Queue visual style updates (2025-10-20) === */
 
-/* Make file input a bit shorter so it doesn't overflow its card */
-.card input.input.wide[type="file"] {
-  max-width: 320px;
-  width: 100%;
-  box-sizing: border-box;
-  display: block;
-}
-
-/* Queue sizing & centering */
+/* White box with blue outline */
 .queue .queueRow {
+  background: #fff;
+  border: 2px solid #007BFF;
+  border-radius: 12px;
+  color: #000;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
   width: 95vw;
   max-width: 1100px;
-  height: 15vh;
   margin: 10px auto;
+  padding: 12px 16px;
   display: flex;
   align-items: center;
+  justify-content: space-between;
 }
 
-/* Speaking now card taller */
-.queue .queueRow.queueNow { height: 20vh; }
-/* Next up card taller */
-.queue .queueRow.queueNext { height: 20vh; }
+/* Anchor queue page to top */
+.full {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  min-height: 100vh;
+  padding-top: 20px;
+}
+
+.queue {
+  margin-top: 0;
+  padding-top: 0;
+}

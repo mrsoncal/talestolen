@@ -202,12 +202,11 @@ export function normalizeType(t){
   return 'innlegg';
 }
 
-// --- Priority insert helper (2025-10-20) ---
+// --- Priority insert helper (for queue ordering) ---
 function insertWithPriority(queue, item){
   const countReplikk = queue.filter(x => x.type === 'replikk').length;
   if (item.type === 'replikk' && countReplikk >= 2){
-    // Ignore extra replikk beyond 2
-    return queue.slice();
+    return queue.slice(); // ignore extra replikk beyond 2
   }
   const next = queue.concat([item]);
   const prio = { replikk: 0, svar_replikk: 1, innlegg: 2 };

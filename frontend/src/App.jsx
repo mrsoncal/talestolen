@@ -120,7 +120,7 @@ function useTimerRerender(enabled){
 export default function App(){
   const state = useStore()
   const hash = useHash()
-  useTimerRerender(hash === '#timer')
+  useTimerRerender(hash !== '#queue')
 
   if (hash === '#timer') return <TimerFull state={state} />
   if (hash === '#queue') return <QueueFull state={state} />
@@ -218,7 +218,7 @@ function AdminView({ state }) {
   }, [state.typeDurations]);
 
   const cur = state.currentSpeaker;
-  const remain = useMemo(() => (cur ? fmt(remainingSeconds(cur)) : '00:00'), [cur]);
+  const remain = cur ? fmt(remainingSeconds(cur)) : '00:00';
   const delegate = state.delegates[String((num || '').trim())];
   const previewName = delegate?.name || (num ? `#${num}` : '');
   const previewOrg = delegate?.org || '';
@@ -632,7 +632,7 @@ function QueueFull({ state }) {
         ) : null}
 
         {queue.length === 0 ? (
-          <div className={"queueRow " + (i === 0 ? "queueNext" : "")}>
+          <div className="queueRow">
             <div className="muted">No one in queue.</div>
           </div>
         ) : (

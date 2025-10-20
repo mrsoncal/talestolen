@@ -127,7 +127,7 @@ export function addToQueueByDelegate({ delegateNumber, type }){
     type: t,
     requestedAt: nowMs()
   };
-  const next = bump({ ...state, queue: [...state.queue, item] });
+  const next = bump({ ...state, queue: insertWithPriority(state.queue, item) });
   publish(next);
 }
 
@@ -140,7 +140,7 @@ export function addToQueueDirect({ name, org, type }){
     type: normalizeType(type),
     requestedAt: nowMs()
   };
-  const next = bump({ ...state, queue: [...state.queue, item] });
+  const next = bump({ ...state, queue: insertWithPriority(state.queue, item) });
   publish(next);
 }
 
@@ -201,3 +201,22 @@ export function normalizeType(t){
   if (v.startsWith('rep')) return 'replikk';
   return 'innlegg';
 }
+
+// --- Priority insert helper (2025-10-20) ---
+function insertWithPriority(queue, item){
+  const countReplikk = queue.filter(x => x.type === 'replikk').length;
+  if (item.type === 'replikk' && countReplikk >= 2){
+    // Ignore extra replikk beyond 2
+    return queue.slice();
+  }
+  const next = queue.concat([item]);
+  const prio = { replikk: 0, svar_replikk: 1, innlegg: 2 };
+  return next.slice().sort((a,b) => {
+    const pa = prio[a.type] ?? 2;
+    const pb = prio[b.type] ?? 2;
+    if (pa !== pb) return pa - pb;
+    return (a.requestedAt ?? 0) - (b.requestedAt ?? 0);
+  });
+}
+
+

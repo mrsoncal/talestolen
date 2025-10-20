@@ -632,7 +632,7 @@ function QueueFull({ state }) {
         ) : null}
 
         {queue.length === 0 ? (
-          <div className="queueRow">
+          <div className={"queueRow " + (i === 0 ? "queueNext" : "")}>
             <div className="muted">No one in queue.</div>
           </div>
         ) : (

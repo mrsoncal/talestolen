@@ -18,3 +18,29 @@
   padding: 0 !important;
 }
 
+
+
+/* === Talestolen layout overrides (2025-10-20) === */
+
+/* Make file input a bit shorter so it doesn't overflow its card */
+.card input.input.wide[type="file"] {
+  max-width: 320px;
+  width: 100%;
+  box-sizing: border-box;
+  display: block;
+}
+
+/* Queue sizing & centering */
+.queue .queueRow {
+  width: 95vw;
+  max-width: 1100px;
+  height: 15vh;
+  margin: 10px auto;
+  display: flex;
+  align-items: center;
+}
+
+/* Speaking now card taller */
+.queue .queueRow.queueNow { height: 20vh; }
+/* Next up card taller */
+.queue .queueRow.queueNext { height: 20vh; }
